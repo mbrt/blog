@@ -1,0 +1,1713 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>ripgrep code review</title>
+<!-- 2016-12-03 Sat 00:35 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="Org-mode">
+
+<link  href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/js/bootstrap.min.js"></script>
+<style type="text/css">
+/* org mode styles on top of twbs */
+
+html {
+    position: relative;
+    min-height: 100%;
+}
+
+body {
+    font-size: 18px;
+    margin-bottom: 105px;
+}
+
+footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 101px;
+    background-color: #f5f5f5;
+}
+
+footer > div {
+    padding: 10px;
+}
+
+footer p {
+    margin: 0 0 5px;
+    text-align: center;
+    font-size: 16px;
+}
+
+#table-of-contents {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+blockquote p {
+    font-size: 18px;
+}
+
+pre {
+    font-size: 16px;
+}
+
+.footpara {
+    display: inline-block;
+}
+
+figcaption {
+  font-size: 16px;
+  color: #666;
+  font-style: italic;
+  padding-bottom: 15px;
+}
+
+/* from twbs docs */
+
+.bs-docs-sidebar.affix {
+    position: static;
+}
+@media (min-width: 768px) {
+    .bs-docs-sidebar {
+        padding-left: 20px;
+    }
+}
+
+/* All levels of nav */
+.bs-docs-sidebar .nav > li > a {
+    display: block;
+    padding: 4px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #999;
+}
+.bs-docs-sidebar .nav > li > a:hover,
+.bs-docs-sidebar .nav > li > a:focus {
+    padding-left: 19px;
+    color: #A1283B;
+    text-decoration: none;
+    background-color: transparent;
+    border-left: 1px solid #A1283B;
+}
+.bs-docs-sidebar .nav > .active > a,
+.bs-docs-sidebar .nav > .active:hover > a,
+.bs-docs-sidebar .nav > .active:focus > a {
+    padding-left: 18px;
+    font-weight: bold;
+    color: #A1283B;
+    background-color: transparent;
+    border-left: 2px solid #A1283B;
+}
+
+/* Nav: second level (shown on .active) */
+.bs-docs-sidebar .nav .nav {
+    display: none; /* Hide by default, but at >768px, show it */
+    padding-bottom: 10px;
+}
+.bs-docs-sidebar .nav .nav > li > a {
+    padding-top: 1px;
+    padding-bottom: 1px;
+    padding-left: 30px;
+    font-size: 12px;
+    font-weight: normal;
+}
+.bs-docs-sidebar .nav .nav > li > a:hover,
+.bs-docs-sidebar .nav .nav > li > a:focus {
+    padding-left: 29px;
+}
+.bs-docs-sidebar .nav .nav > .active > a,
+.bs-docs-sidebar .nav .nav > .active:hover > a,
+.bs-docs-sidebar .nav .nav > .active:focus > a {
+    padding-left: 28px;
+    font-weight: 500;
+}
+
+/* Nav: third level (shown on .active) */
+.bs-docs-sidebar .nav .nav .nav {
+    padding-bottom: 10px;
+}
+.bs-docs-sidebar .nav .nav .nav > li > a {
+    padding-top: 1px;
+    padding-bottom: 1px;
+    padding-left: 40px;
+    font-size: 12px;
+    font-weight: normal;
+}
+.bs-docs-sidebar .nav .nav .nav > li > a:hover,
+.bs-docs-sidebar .nav .nav .nav > li > a:focus {
+    padding-left: 39px;
+}
+.bs-docs-sidebar .nav .nav .nav > .active > a,
+.bs-docs-sidebar .nav .nav .nav > .active:hover > a,
+.bs-docs-sidebar .nav .nav .nav > .active:focus > a {
+    padding-left: 38px;
+    font-weight: 500;
+}
+
+/* Show and affix the side nav when space allows it */
+@media (min-width: 992px) {
+    .bs-docs-sidebar .nav > .active > ul {
+        display: block;
+    }
+    /* Widen the fixed sidebar */
+    .bs-docs-sidebar.affix,
+    .bs-docs-sidebar.affix-bottom {
+        width: 213px;
+    }
+    .bs-docs-sidebar.affix {
+        position: fixed; /* Undo the static from mobile first approach */
+        top: 20px;
+    }
+    .bs-docs-sidebar.affix-bottom {
+        position: absolute; /* Undo the static from mobile first approach */
+    }
+    .bs-docs-sidebar.affix .bs-docs-sidenav,.bs-docs-sidebar.affix-bottom .bs-docs-sidenav {
+        margin-top: 0;
+        margin-bottom: 0
+    }
+}
+@media (min-width: 1200px) {
+    /* Widen the fixed sidebar again */
+    .bs-docs-sidebar.affix-bottom,
+    .bs-docs-sidebar.affix {
+        width: 263px;
+    }
+}
+</style>
+<script type="text/javascript">
+$(function() {
+    'use strict';
+
+    $('.bs-docs-sidebar li').first().addClass('active');
+
+    $(document.body).scrollspy({target: '.bs-docs-sidebar'});
+
+    $('.bs-docs-sidebar').affix();
+});
+</script>
+</head>
+<body>
+<div id="content" class="container">
+<nav class="navbar navbar-default">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="..">mbrt blog</a>
+      <p class="navbar-text" ><a href="https://twitter.com/brt_device" class="twitter-follow-button" data-show-count="false">Follow @mbrt_device</a></p>
+    </div>
+  </div>
+</nav>
+
+<div class="row"><div class="col-md-9"><h1 class="title">ripgrep code review</h1>
+<p>
+I've been playing around with <a href="https://www.rust-lang.org">Rust</a> for a year and a half, and the best part of
+it, like many others say, has been the very helpful community. There are a lot
+of online resources that help you to get started: the <a href="https://doc.rust-lang.org/book/">Rust book</a>, the
+<a href="https://doc.rust-lang.org/nomicon/">Rustonomicon</a> and many <a href="https://this-week-in-rust.org/">blog posts</a> and <a href="http://stackoverflow.com/questions/tagged/rust">stack overflow questions</a>. After I learned
+the basics I felt a bit lost though. I couldn't find enough resources for
+intermediate-level-Rustaceans. I'm a C++ developer in my daily job, and so I'm
+used with books like <a href="http://www.aristeia.com/books.html">Effective C++</a> from Scott Meyers, the <a href="https://herbsutter.com/">Herb Sutter's blog</a> and
+a lot of online resources that always helped me with advanced C++ topics (that
+are a lot&#x2026; :sigh:). Those resources teach you how to get the best from the
+language, how to use it properly, and how to structure your code to be more
+clear and effective. Those resources are not completely absent in the Rust
+community, but neither common.
+</p>
+
+<p>
+How do you learn those things then? Well, there are two ways in my opinion: you
+spend a lot of time and learn by doing, or you look at some good code. I think
+code reviews are incredibly useful; you can see how other people reason about
+problems you also struggled with, and how they have solved them. This post
+attempts to target those intermediate-level-Rustaceans (like me), by looking at
+the <a href="https://github.com/BurntSushi/ripgrep">ripgrep</a> crate by Andrew Gallant, a great example of good Rust.
+</p>
+
+<div id="outline-container-sec-1" class="outline-2">
+<h2 id="sec-1"><span class="section-number-2">1</span> Introduction</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+I'm not going to explain everything about the crate, since there is already a
+very good <a href="http://blog.burntsushi.net/ripgrep/">blog post</a> by Andrew himself, explaining how the application works from
+a functional perspective, and some used algorithms. We are going instead to walk
+through the crate architecture. I'm going to take for granted some of the
+basics, so if you need a refresher you can take a look at the resources I
+mentioned above.
+</p>
+
+<p>
+We are going to look at this specific version of the crate:
+</p>
+
+<pre class="example">
+$ git describe
+0.2.5-4-gf728708
+</pre>
+
+<p>
+which is the last one at the time of writing. By the time you are reading this,
+however, the crate might have evolved, so if you want to look at the code by
+yourself while reading, you should checkout this specific version:
+</p>
+
+<pre class="example">
+$ git clone https://github.com/BurntSushi/ripgrep.git
+$ cd ripgrep
+$ git checkout f728708
+</pre>
+
+<p>
+and without further ado, let's get started.
+</p>
+</div>
+</div>
+
+<div id="outline-container-sec-2" class="outline-2">
+<h2 id="sec-2"><span class="section-number-2">2</span> The big picture</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+<code>ripgrep</code> is a command line tool for searching file contents using regular
+expressions, similarly to GNU grep. The tool is split across four crates: the
+main one (<code>ripgrep</code>), <code>ignore</code>, <code>grep</code> and <code>globset</code>.
+</p>
+
+
+<figure>
+<p><img src="crates.svg" class="img-responsive" alt="crates.svg">
+</p>
+</figure>
+
+<p>
+The <code>grep</code> crate provides line-by-line regex searching from a buffer and it is
+used only by the main crate. The <code>globset</code> crate uses regex to perform <a href="https://en.wikipedia.org/wiki/Glob_(programming)">glob
+matching</a> over paths. It is used by the main and the <code>ignore</code> crates. The
+<code>ignore</code> crate implements directory walking, ignore and include patterns. It
+uses the <code>glob</code> crate for that. Finally, the main crate, that glues everything
+together, implements command line argument parsing, output handling and
+multi-threading.
+</p>
+
+<p>
+One clear advantage of splitting an application in multiple crates is that this
+forces you to keep your code scoped. It's easy to create a mess of dependencies
+among the components if everything is in the same crate (or, even worse, in the
+same module). If you instead take a part of your application and try to give it
+a meaning by itself, you'll end up with a more generic, usable and clearer
+interface. Embrace the <a href="https://en.wikipedia.org/wiki/Single_responsibility_principle">Single responsibility principle</a> and let it be your guide,
+like <code>ripgrep</code> clearly does.
+</p>
+</div>
+</div>
+
+<div id="outline-container-sec-3" class="outline-2">
+<h2 id="sec-3"><span class="section-number-2">3</span> Main</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+Everything starts from the <code>ripgrep</code> main function:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>main.rs:74</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">main</span>() {
+    <span style="color: #4f97d7; font-weight: bold;">match</span> <span style="color: #ce537a; font-weight: bold;">Args</span>::parse().and_then(run) {
+        <span style="color: #ce537a; font-weight: bold;">Ok</span>(count) <span style="color: #4f97d7; font-weight: bold;">if</span> count == <span style="color: #a45bad;">0</span> =&gt; <span style="color: #a45bad;">process</span>::exit(<span style="color: #a45bad;">1</span>),
+        <span style="color: #ce537a; font-weight: bold;">Ok</span>(_) =&gt; <span style="color: #a45bad;">process</span>::exit(<span style="color: #a45bad;">0</span>),
+        <span style="color: #ce537a; font-weight: bold;">Err</span>(err) =&gt; {
+            <span style="color: #bc6ec5;">eprintln!</span>(<span style="color: #2d9574;">"{}"</span>, err);
+            <span style="color: #a45bad;">process</span>::exit(<span style="color: #a45bad;">1</span>);
+        }
+    }
+}
+</pre>
+</div>
+
+<p>
+It is very concise: it parses the command line arguments and then passes them to
+the <code>run</code> function. In between, there is the <a href="https://doc.rust-lang.org/std/result/enum.Result.html#method.and_then">Result::and_then</a> combinator, so the
+<code>match</code> statement gets to the <code>Ok</code> branch only if both operations succeed. If
+not, it selects the <code>Err</code> branch, handling errors for both the first and the
+second operation. Then the exit code depends on whether the count for matches is
+not zero.
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>main.rs:85</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">run</span>(<span style="color: #7590db;">args</span>: <span style="color: #ce537a; font-weight: bold;">Args</span>) -&gt; <span style="color: #ce537a; font-weight: bold;">Result</span>&lt;<span style="color: #ce537a; font-weight: bold;">u64</span>&gt; {
+    <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">...</span>
+}
+</pre>
+</div>
+
+<p>
+The <code>run</code> function at first decides if it's worth to spawn threads or not, and
+if so, this is the way it setups the things:
+</p>
+
+
+<figure>
+<p><img src="main.svg" class="img-responsive" alt="main.svg">
+</p>
+</figure>
+
+<p>
+The main thread, controlled by the <code>run</code> function digs files from the
+file system, and pushes them into a <a href="https://crates.io/crates/deque">deque</a>. This is a Single-producer /
+Multiple-consumers queue, from which multiple worker threads can pull at the
+same time. They will in turn perform the search operations. Here is the workers
+initialization in the <code>run</code> function:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>main.rs:116</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">let</span> workq = {
+    <span style="color: #4f97d7; font-weight: bold;">let</span> (workq, stealer) = <span style="color: #a45bad;">deque</span>::new();
+    <span style="color: #4f97d7; font-weight: bold;">for</span> _ <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #a45bad;">0</span>..threads {
+        <span style="color: #4f97d7; font-weight: bold;">let</span> worker = <span style="color: #ce537a; font-weight: bold;">MultiWorker</span> {
+            <span style="color: #7590db;">chan_work</span>: stealer.clone(),
+            <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">initialize other fields...</span>
+        };
+        workers.push(<span style="color: #a45bad;">thread</span>::spawn(<span style="color: #4f97d7; font-weight: bold;">move</span> || worker.run()));
+    }
+    workq
+};
+</pre>
+</div>
+
+<p>
+As you can see, the <code>deque::new()</code> returns two objects. The queue is indeed
+composed by two ends: one is the <code>workq</code> from which the main thread can push,
+and the other end is the <code>stealer</code>, from which all the workers can pull. The
+loop creates a bunch of workers and move them to new threads, along with a
+<code>stealer</code>. Note that the <code>stealer</code> is <a href="https://doc.rust-lang.org/std/clone/trait.Clone.html">cloneable</a>, but this doesn't mean that the
+queue itself is cloned. Internally indeed the <code>stealer</code> contains an <a href="https://doc.rust-lang.org/std/sync/struct.Arc.html">Arc</a> to the
+queue:
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">struct</span> <span style="color: #ce537a; font-weight: bold;">Stealer</span>&lt;<span style="color: #7590db;">T</span>: <span style="color: #ce537a; font-weight: bold;">Send</span>&gt; {
+    <span style="color: #7590db;">deque</span>: <span style="color: #ce537a; font-weight: bold;">Arc</span>&lt;<span style="color: #ce537a; font-weight: bold;">Deque</span>&lt;<span style="color: #ce537a; font-weight: bold;">T</span>&gt;&gt;,
+}
+</pre>
+</div>
+
+<p>
+To note here is the beauty of the <code>deque</code> interface. To express the fact that
+the producer is only one, but the consumers can be multiple, the type is split
+in two: the producer is then <a href="https://doc.rust-lang.org/std/marker/trait.Send.html">Send</a> but not <a href="https://doc.rust-lang.org/std/marker/trait.Sync.html">Sync</a>, nor <a href="https://doc.rust-lang.org/std/clone/trait.Clone.html">Clone</a>. There is no way to
+use it from multiple threads, since you can move it to another thread, but in
+that case you lose your reference to it. The <code>Stealer</code>, which is the other end,
+is instead both <code>Send</code> and <code>Clone</code>. You can then pass it around by cloning and
+sending the copies off to other threads; they all refer to the same queue. There
+is no way to use this interface incorrectly.
+</p>
+
+<p>
+Another thing to note here is that the <code>workq</code> variable is initialized by a
+block that returns just the producer part of a new <code>deque</code>. Inside the block,
+the workers along with their stealers are moved into new worker threads and
+those are in turn pushed into a vector. Using a block that just returns what
+it's needed for the rest of the function is a good practice. In this way the
+<code>run</code> function is not polluted with variables that are not usable anymore
+because their values have been moved.
+</p>
+
+<p>
+This is the <code>MultiWorker</code> struct, that runs in a separate thread:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>main.rs:236</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">struct</span> <span style="color: #ce537a; font-weight: bold;">MultiWorker</span> {
+    <span style="color: #7590db;">chan_work</span>: <span style="color: #ce537a; font-weight: bold;">Stealer</span>&lt;<span style="color: #ce537a; font-weight: bold;">Work</span>&gt;,
+    <span style="color: #7590db;">quiet_matched</span>: <span style="color: #ce537a; font-weight: bold;">QuietMatched</span>,
+    <span style="color: #7590db;">out</span>: <span style="color: #ce537a; font-weight: bold;">Arc</span>&lt;<span style="color: #ce537a; font-weight: bold;">Mutex</span>&lt;<span style="color: #ce537a; font-weight: bold;">Out</span>&gt;&gt;,
+    <span style="color: #bc6ec5;">#[cfg(not(windows))]</span>
+    <span style="color: #7590db;">outbuf</span>: <span style="color: #ce537a; font-weight: bold;">Option</span>&lt;<span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>&lt;<span style="color: #a45bad;">term</span>::<span style="color: #ce537a; font-weight: bold;">TerminfoTerminal</span>&lt;<span style="color: #ce537a; font-weight: bold;">Vec</span>&lt;<span style="color: #ce537a; font-weight: bold;">u8</span>&gt;&gt;&gt;&gt;,
+    <span style="color: #bc6ec5;">#[cfg(windows)]</span>
+    <span style="color: #7590db;">outbuf</span>: <span style="color: #ce537a; font-weight: bold;">Option</span>&lt;<span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>&lt;<span style="color: #ce537a; font-weight: bold;">WindowsBuffer</span>&gt;&gt;,
+    <span style="color: #7590db;">worker</span>: <span style="color: #ce537a; font-weight: bold;">Worker</span>,
+}
+</pre>
+</div>
+
+<p>
+the first field is the stealer. As you can see from its type, the stealer
+receives <code>Work</code> structs:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>main.rs:225</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">enum</span> <span style="color: #ce537a; font-weight: bold;">Work</span> {
+    <span style="color: #ce537a; font-weight: bold;">Stdin</span>,
+    <span style="color: #ce537a; font-weight: bold;">File</span>(<span style="color: #ce537a; font-weight: bold;">DirEntry</span>),
+    <span style="color: #ce537a; font-weight: bold;">Quit</span>,
+}
+</pre>
+</div>
+
+<p>
+The main thread will push them from its <code>workq</code> variable:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>main.rs:136</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">for</span> dent <span style="color: #4f97d7; font-weight: bold;">in</span> args.walker() {
+    <span style="color: #4f97d7; font-weight: bold;">if</span> quiet_matched.has_match() {
+        <span style="color: #4f97d7; font-weight: bold;">break</span>;
+    }
+    paths_searched += <span style="color: #a45bad;">1</span>;
+    <span style="color: #4f97d7; font-weight: bold;">if</span> dent.is_stdin() {
+        workq.push(<span style="color: #ce537a; font-weight: bold;">Work</span>::<span style="color: #ce537a; font-weight: bold;">Stdin</span>);
+    } <span style="color: #4f97d7; font-weight: bold;">else</span> {
+        workq.push(<span style="color: #ce537a; font-weight: bold;">Work</span>::<span style="color: #ce537a; font-weight: bold;">File</span>(dent));
+    }
+}
+</pre>
+</div>
+
+<p>
+The <code>args.walker()</code> is an iterator over the files to search, or the standard
+input stream, if the <code>-</code> argument is passed. In the former case it pushes a
+<code>Work::File</code> entry with the path, in the latter a <code>Work::Stdin</code> entry. The items
+are received in the <code>MultiWorker::run</code> function. It is a loop that pops items
+from the <code>deque</code> and process them one by one:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>main.rs:256</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">loop</span> {
+    <span style="color: #4f97d7; font-weight: bold;">if</span> <span style="color: #4f97d7; font-weight: bold;">self</span>.quiet_matched.has_match() {
+        <span style="color: #4f97d7; font-weight: bold;">break</span>;
+    }
+    <span style="color: #4f97d7; font-weight: bold;">let</span> work = <span style="color: #4f97d7; font-weight: bold;">match</span> <span style="color: #4f97d7; font-weight: bold;">self</span>.chan_work.steal() {
+        <span style="color: #ce537a; font-weight: bold;">Stolen</span>::<span style="color: #ce537a; font-weight: bold;">Empty</span> | <span style="color: #ce537a; font-weight: bold;">Stolen</span>::<span style="color: #ce537a; font-weight: bold;">Abort</span> =&gt; <span style="color: #4f97d7; font-weight: bold;">continue</span>,
+        <span style="color: #ce537a; font-weight: bold;">Stolen</span>::<span style="color: #ce537a; font-weight: bold;">Data</span>(<span style="color: #ce537a; font-weight: bold;">Work</span>::<span style="color: #ce537a; font-weight: bold;">Quit</span>) =&gt; <span style="color: #4f97d7; font-weight: bold;">break</span>,
+        <span style="color: #ce537a; font-weight: bold;">Stolen</span>::<span style="color: #ce537a; font-weight: bold;">Data</span>(<span style="color: #ce537a; font-weight: bold;">Work</span>::<span style="color: #ce537a; font-weight: bold;">Stdin</span>) =&gt; <span style="color: #ce537a; font-weight: bold;">WorkReady</span>::<span style="color: #ce537a; font-weight: bold;">Stdin</span>,
+        <span style="color: #ce537a; font-weight: bold;">Stolen</span>::<span style="color: #ce537a; font-weight: bold;">Data</span>(<span style="color: #ce537a; font-weight: bold;">Work</span>::<span style="color: #ce537a; font-weight: bold;">File</span>(ent)) =&gt; {
+            <span style="color: #4f97d7; font-weight: bold;">match</span> <span style="color: #ce537a; font-weight: bold;">File</span>::open(ent.path()) {
+                <span style="color: #ce537a; font-weight: bold;">Ok</span>(file) =&gt; <span style="color: #ce537a; font-weight: bold;">WorkReady</span>::<span style="color: #ce537a; font-weight: bold;">DirFile</span>(ent, file),
+                <span style="color: #ce537a; font-weight: bold;">Err</span>(err) =&gt; {
+                    <span style="color: #bc6ec5;">eprintln!</span>(<span style="color: #2d9574;">"{}: {}"</span>, ent.path().display(), err);
+                    <span style="color: #4f97d7; font-weight: bold;">continue</span>;
+                }
+            }
+        }
+    };
+    <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">...</span>
+}
+</pre>
+</div>
+
+<p>
+The <code>steal()</code> method tries to pop from the <code>deque</code> and returns a <code>Stolen</code>
+instance:
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">enum</span> <span style="color: #ce537a; font-weight: bold;">Stolen</span>&lt;<span style="color: #ce537a; font-weight: bold;">T</span>&gt; {
+    <span style="color: #2aa1ae;">/// The deque was empty at the time of stealing</span>
+    <span style="color: #ce537a; font-weight: bold;">Empty</span>,
+    <span style="color: #2aa1ae;">/// The stealer lost the race for stealing data, and a retry may return more</span>
+    <span style="color: #2aa1ae;">/// data.</span>
+    <span style="color: #ce537a; font-weight: bold;">Abort</span>,
+    <span style="color: #2aa1ae;">/// The stealer has successfully stolen some data.</span>
+    <span style="color: #ce537a; font-weight: bold;">Data</span>(<span style="color: #ce537a; font-weight: bold;">T</span>),
+}
+</pre>
+</div>
+
+<p>
+The outcome is matched against the different possibilities, but only
+<code>Stolen::Data</code> contains a <code>Work</code> entry. Both <code>Stdin</code> and <code>File</code> entry types are
+then translated into a <code>WorkReady</code> instance. In the second case the file is then
+opened with an <code>std::fs::File</code>. The <code>work</code> variable is later consumed by a
+<code>Worker</code> instance:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>main.rs:277</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">self</span>.worker.do_work(&amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> printer, work);
+</pre>
+</div>
+
+<p>
+We'll get back to that in a moment, but let's first backtrack to the
+<code>MultiWorker::run</code> loop. The <code>Work::Quit</code> case breaks it, so the thread
+terminates:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>main.rs:262</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">let</span> work = <span style="color: #4f97d7; font-weight: bold;">match</span> <span style="color: #4f97d7; font-weight: bold;">self</span>.chan_work.steal() {
+    <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">...</span>
+    <span style="color: #ce537a; font-weight: bold;">Stolen</span>::<span style="color: #ce537a; font-weight: bold;">Data</span>(<span style="color: #ce537a; font-weight: bold;">Work</span>::<span style="color: #ce537a; font-weight: bold;">Quit</span>) =&gt; <span style="color: #4f97d7; font-weight: bold;">break</span>,
+    <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">...</span>
+};
+</pre>
+</div>
+
+<p>
+This value is pushed by the main thread after it walks through all the files.
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>main.rs:152</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">for</span> _ <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #a45bad;">0</span>..workers.len() {
+    workq.push(<span style="color: #ce537a; font-weight: bold;">Work</span>::<span style="color: #ce537a; font-weight: bold;">Quit</span>);
+}
+<span style="color: #4f97d7; font-weight: bold;">let</span> <span style="color: #4f97d7; font-weight: bold;">mut</span> match_count = <span style="color: #a45bad;">0</span>;
+<span style="color: #4f97d7; font-weight: bold;">for</span> worker <span style="color: #4f97d7; font-weight: bold;">in</span> workers {
+    match_count += worker.join().unwrap();
+}
+</pre>
+</div>
+
+<p>
+The threads are all guaranteed to terminate because the number of <code>Quit</code>
+messages pushed is the same as the number of workers. A worker can only consume
+one of them and then quit. This implies, since no messages can be lost, that all
+the workers will get the message at some point, and then terminate. All the
+workers threads are then joined, waiting for completion.
+</p>
+
+<p>
+To recap, this is a the multi-threading pattern used:
+</p>
+<ul class="org-ul">
+<li>a <code>deque</code> in between a producer (that provides the work items) and a bunch of
+consumers (that do the heavy lifting) in separate threads;
+</li>
+<li>the <code>deque</code> carries an enumeration of the things to do, and one of them is the
+<code>Quit</code> action;
+</li>
+<li>the producer will eventually push a bunch of <code>Quit</code> messages to terminate the
+worker threads (one per thread).
+</li>
+</ul>
+
+<p>
+In case you just have one type of job, it makes perfect sense to use an
+<code>Option&lt;Stuff&gt;</code> as work item, instead of an enumeration. The workers have then
+to terminate in case <code>None</code> is passed. The <code>Option</code> can be used also in the
+<code>ripgrep</code> case instead of the <code>Quit</code> message, but I'm not sure the code would be
+more readable:
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">let</span> work = <span style="color: #4f97d7; font-weight: bold;">match</span> <span style="color: #4f97d7; font-weight: bold;">self</span>.chan_work.steal() {
+    <span style="color: #ce537a; font-weight: bold;">Stolen</span>::<span style="color: #ce537a; font-weight: bold;">Empty</span> | <span style="color: #ce537a; font-weight: bold;">Stolen</span>::<span style="color: #ce537a; font-weight: bold;">Abort</span> =&gt; <span style="color: #4f97d7; font-weight: bold;">continue</span>,
+    <span style="color: #ce537a; font-weight: bold;">Stolen</span>::<span style="color: #ce537a; font-weight: bold;">Data</span>(<span style="color: #ce537a; font-weight: bold;">None</span>) =&gt; <span style="color: #4f97d7; font-weight: bold;">break</span>,
+    <span style="color: #ce537a; font-weight: bold;">Stolen</span>::<span style="color: #ce537a; font-weight: bold;">Data</span>(<span style="color: #ce537a; font-weight: bold;">Some</span>(<span style="color: #ce537a; font-weight: bold;">Work</span>::<span style="color: #ce537a; font-weight: bold;">Stdin</span>)) =&gt; <span style="color: #ce537a; font-weight: bold;">WorkReady</span>::<span style="color: #ce537a; font-weight: bold;">Stdin</span>,
+    <span style="color: #ce537a; font-weight: bold;">Stolen</span>::<span style="color: #ce537a; font-weight: bold;">Data</span>(<span style="color: #ce537a; font-weight: bold;">Some</span>(<span style="color: #ce537a; font-weight: bold;">Work</span>::<span style="color: #ce537a; font-weight: bold;">File</span>(ent)) =&gt; {
+        <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">...</span>
+    }
+};
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-3-1" class="outline-3">
+<h3 id="sec-3-1"><span class="section-number-3">3.1</span> Mono thread</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+<code>ripgrep</code> can also operate in a single thread, in case there is only one file to
+search or only one core to use, or the user says so. The <code>run</code> function checks
+that:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>main.rs:100</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">let</span> threads = <span style="color: #a45bad;">cmp</span>::max(<span style="color: #a45bad;">1</span>, args.threads() - <span style="color: #a45bad;">1</span>);
+<span style="color: #4f97d7; font-weight: bold;">let</span> isone =
+    paths.len() == <span style="color: #a45bad;">1</span> &amp;&amp; (paths[<span style="color: #a45bad;">0</span>] == <span style="color: #ce537a; font-weight: bold;">Path</span>::new(<span style="color: #2d9574;">"-"</span>) || paths[<span style="color: #a45bad;">0</span>].is_file());
+<span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">...</span>
+<span style="color: #4f97d7; font-weight: bold;">if</span> threads == <span style="color: #a45bad;">1</span> || isone {
+    <span style="color: #4f97d7; font-weight: bold;">return</span> run_one_thread(args.clone());
+}
+</pre>
+</div>
+
+<p>
+and calls the <code>run_one_thread</code> function (I have removed some uninteresting
+details from it):
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>main.rs:162</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">run_one_thread</span>(<span style="color: #7590db;">args</span>: <span style="color: #ce537a; font-weight: bold;">Arc</span>&lt;<span style="color: #ce537a; font-weight: bold;">Args</span>&gt;) -&gt; <span style="color: #ce537a; font-weight: bold;">Result</span>&lt;<span style="color: #ce537a; font-weight: bold;">u64</span>&gt; {
+    <span style="color: #4f97d7; font-weight: bold;">let</span> <span style="color: #4f97d7; font-weight: bold;">mut</span> worker = <span style="color: #ce537a; font-weight: bold;">Worker</span> {
+        <span style="color: #7590db;">args</span>: args.clone(),
+        <span style="color: #7590db;">inpbuf</span>: args.input_buffer(),
+        <span style="color: #7590db;">grep</span>: args.grep(),
+        <span style="color: #7590db;">match_count</span>: <span style="color: #a45bad;">0</span>,
+    };
+    <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">...</span>
+    <span style="color: #4f97d7; font-weight: bold;">for</span> dent <span style="color: #4f97d7; font-weight: bold;">in</span> args.walker() {
+        <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">...</span>
+        <span style="color: #4f97d7; font-weight: bold;">if</span> dent.is_stdin() {
+            worker.do_work(&amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> printer, <span style="color: #ce537a; font-weight: bold;">WorkReady</span>::<span style="color: #ce537a; font-weight: bold;">Stdin</span>);
+        } <span style="color: #4f97d7; font-weight: bold;">else</span> {
+            <span style="color: #4f97d7; font-weight: bold;">let</span> file = <span style="color: #4f97d7; font-weight: bold;">match</span> <span style="color: #ce537a; font-weight: bold;">File</span>::open(dent.path()) {
+                <span style="color: #ce537a; font-weight: bold;">Ok</span>(file) =&gt; file,
+                <span style="color: #ce537a; font-weight: bold;">Err</span>(err) =&gt; {
+                    <span style="color: #bc6ec5;">eprintln!</span>(<span style="color: #2d9574;">"{}: {}"</span>, dent.path().display(), err);
+                    <span style="color: #4f97d7; font-weight: bold;">continue</span>;
+                }
+            };
+            worker.do_work(&amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> printer, <span style="color: #ce537a; font-weight: bold;">WorkReady</span>::<span style="color: #ce537a; font-weight: bold;">DirFile</span>(dent, file));
+        }
+    }
+    <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">...</span>
+}
+</pre>
+</div>
+
+<p>
+As you can see, the function uses a single <code>Worker</code> and if you remember, this
+struct is used by <code>MultiWorker</code> too. The files to search are iterated by
+<code>args.walker()</code> as before and each entry is passed to the <code>worker</code>, as before.
+The use of <code>Worker</code> in both cases allows code reuse to a great extent.
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-sec-4" class="outline-2">
+<h2 id="sec-4"><span class="section-number-2">4</span> The file listing</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+We are now going to look over the file listing functional block.
+</p>
+
+<p>
+The default operation mode of <code>ripgrep</code> is to search recursively for non-binary,
+non-ignored files starting from the current directory (or from the user
+specified paths). To enumerate the files and feed the search engine, <code>ripgrep</code>
+uses the <code>ignore</code> crate.
+</p>
+
+<p>
+But let's start from the beginning: the <code>walker</code> function. It returns a <code>Walk</code>
+instance, it is constructed by <code>Args</code> and used by the <code>run</code> function in
+<code>main</code>:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>args.rs:725</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">walker</span>(&amp;<span style="color: #4f97d7; font-weight: bold;">self</span>) -&gt; <span style="color: #ce537a; font-weight: bold;">Walk</span>;
+</pre>
+</div>
+
+<p>
+<code>Walk</code> is just a simple wrapper around the <code>ignore::Walk</code> struct. A value of
+this struct can be created by using its <code>new</code> method:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>walk.rs:261</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">new</span>&lt;<span style="color: #7590db;">P</span>: <span style="color: #ce537a; font-weight: bold;">AsRef</span>&lt;<span style="color: #ce537a; font-weight: bold;">Path</span>&gt;&gt;(<span style="color: #7590db;">path</span>: <span style="color: #ce537a; font-weight: bold;">P</span>) -&gt; <span style="color: #ce537a; font-weight: bold;">Walk</span>;
+</pre>
+</div>
+
+<p>
+or with a <code>WalkBuilder</code>, that implements the <a href="https://doc.rust-lang.org/book/method-syntax.html#builder-pattern">builder pattern</a>. This allows to
+customize the behavior without annoying the users of the library, since it frees
+them from the burden to provide a lot of parameters to the constructor, when
+just the default values are needed:
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">let</span> w = <span style="color: #ce537a; font-weight: bold;">WalkBuilder</span>::new(path).ignore(<span style="color: #4f97d7; font-weight: bold;">true</span>).max_depth(<span style="color: #ce537a; font-weight: bold;">Some</span>(<span style="color: #a45bad;">5</span>)).build();
+</pre>
+</div>
+
+<p>
+In this example we have created a <code>WalkBuilder</code> with default arguments and just
+override the <code>ignore</code> and <code>max_depth</code> options.
+</p>
+
+<p>
+The implementation of the type is not very interesting from our point of view.
+It is basically an <code>Iterator</code> that walks through the file system by using the
+<code>walkdir</code> crate, but ignores the files and directories listed in <code>.gitignore</code>
+and <code>.ignore</code> files possibly present, with the help of the <code>Ignore</code> type. We'll
+look at that type a bit later. Let's look at the <code>Error</code> type first:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>ignore/src/lib.rs:74</code></label>
+<pre class="src src-rust"><span style="color: #2aa1ae;">/// Represents an error that can occur when parsing a gitignore file.</span>
+<span style="color: #bc6ec5;">#[derive(Debug)]</span>
+<span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">enum</span> <span style="color: #ce537a; font-weight: bold;">Error</span> {
+    <span style="color: #ce537a; font-weight: bold;">Partial</span>(<span style="color: #ce537a; font-weight: bold;">Vec</span>&lt;<span style="color: #ce537a; font-weight: bold;">Error</span>&gt;),
+    <span style="color: #ce537a; font-weight: bold;">WithLineNumber</span> { <span style="color: #7590db;">line</span>: <span style="color: #ce537a; font-weight: bold;">u64</span>, <span style="color: #7590db;">err</span>: <span style="color: #ce537a; font-weight: bold;">Box</span>&lt;<span style="color: #ce537a; font-weight: bold;">Error</span>&gt; },
+    <span style="color: #ce537a; font-weight: bold;">WithPath</span> { <span style="color: #7590db;">path</span>: <span style="color: #ce537a; font-weight: bold;">PathBuf</span>, <span style="color: #7590db;">err</span>: <span style="color: #ce537a; font-weight: bold;">Box</span>&lt;<span style="color: #ce537a; font-weight: bold;">Error</span>&gt; },
+    <span style="color: #ce537a; font-weight: bold;">Io</span>(<span style="color: #a45bad;">io</span>::<span style="color: #ce537a; font-weight: bold;">Error</span>),
+    <span style="color: #ce537a; font-weight: bold;">Glob</span>(<span style="color: #ce537a; font-weight: bold;">String</span>),
+    <span style="color: #ce537a; font-weight: bold;">UnrecognizedFileType</span>(<span style="color: #ce537a; font-weight: bold;">String</span>),
+    <span style="color: #ce537a; font-weight: bold;">InvalidDefinition</span>,
+}
+</pre>
+</div>
+
+<p>
+This error type has an interesting recursive definition. The <code>Partial</code> case of
+the enumeration contains a vector of <code>Error</code> instances, for example.
+<code>WithLineNumber</code> adds line information to an <code>Error</code><sup><a id="fnr.1" name="fnr.1" class="footref" href="#fn.1">1</a></sup>. Then the
+<a href="https://doc.rust-lang.org/std/error/trait.Error.html">error::Error</a>, <a href="https://doc.rust-lang.org/std/fmt/trait.Display.html">fmt::Display</a> and <a href="https://doc.rust-lang.org/std/convert/trait.From.html">From&lt;io::Error&gt;</a> traits are implemented, to make
+it a proper error type and to easily construct it out an <code>io::Error</code>. Here, the
+necessary boilerplate to crank up the error type are handcrafted. Another
+possibility could have been to use the <a href="https://github.com/tailhook/quick-error">quick-error</a> macro, which reduces the
+burden to implement error types to a minimum.<sup><a id="fnr.2" name="fnr.2" class="footref" href="#fn.2">2</a></sup>
+</p>
+</div>
+<div id="outline-container-sec-4-1" class="outline-3">
+<h3 id="sec-4-1"><span class="section-number-3">4.1</span> Ignore patterns</h3>
+<div class="outline-text-3" id="text-4-1">
+<p>
+Ignore patterns are handled within the <code>ignore</code> crate by the <code>Ignore</code> struct.
+This type connects directory traversal with ignore semantics. In practice it
+builds a tree-like data structure that mimics the directories tree, in which
+nodes are ignore contexts. The implementation is quite complicated, but let's
+give it a brief look:<sup><a id="fnr.3" name="fnr.3" class="footref" href="#fn.3">3</a></sup>
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>ignore/src/dir.rs:84</code></label>
+<pre class="src src-rust"><span style="color: #bc6ec5;">#[derive(Clone, Debug)]</span>
+<span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">struct</span> <span style="color: #ce537a; font-weight: bold;">Ignore</span>(<span style="color: #ce537a; font-weight: bold;">Arc</span>&lt;<span style="color: #ce537a; font-weight: bold;">IgnoreInner</span>&gt;);
+
+<span style="color: #bc6ec5;">#[derive(Clone, Debug)]</span>
+<span style="color: #4f97d7; font-weight: bold;">struct</span> <span style="color: #ce537a; font-weight: bold;">IgnoreInner</span> {
+    <span style="color: #7590db;">compiled</span>: <span style="color: #ce537a; font-weight: bold;">Arc</span>&lt;<span style="color: #ce537a; font-weight: bold;">RwLock</span>&lt;<span style="color: #ce537a; font-weight: bold;">HashMap</span>&lt;<span style="color: #ce537a; font-weight: bold;">OsString</span>, <span style="color: #ce537a; font-weight: bold;">Ignore</span>&gt;&gt;&gt;,
+    <span style="color: #7590db;">dir</span>: <span style="color: #ce537a; font-weight: bold;">PathBuf</span>,
+    <span style="color: #7590db;">overrides</span>: <span style="color: #ce537a; font-weight: bold;">Arc</span>&lt;<span style="color: #ce537a; font-weight: bold;">Override</span>&gt;,
+    <span style="color: #7590db;">types</span>: <span style="color: #ce537a; font-weight: bold;">Arc</span>&lt;<span style="color: #ce537a; font-weight: bold;">Types</span>&gt;,
+    <span style="color: #7590db;">parent</span>: <span style="color: #ce537a; font-weight: bold;">Option</span>&lt;<span style="color: #ce537a; font-weight: bold;">Ignore</span>&gt;,
+    <span style="color: #7590db;">is_absolute_parent</span>: <span style="color: #ce537a; font-weight: bold;">bool</span>,
+    <span style="color: #7590db;">absolute_base</span>: <span style="color: #ce537a; font-weight: bold;">Option</span>&lt;<span style="color: #ce537a; font-weight: bold;">Arc</span>&lt;<span style="color: #ce537a; font-weight: bold;">PathBuf</span>&gt;&gt;,
+    <span style="color: #7590db;">explicit_ignores</span>: <span style="color: #ce537a; font-weight: bold;">Arc</span>&lt;<span style="color: #ce537a; font-weight: bold;">Vec</span>&lt;<span style="color: #ce537a; font-weight: bold;">Gitignore</span>&gt;&gt;,
+    <span style="color: #7590db;">ignore_matcher</span>: <span style="color: #ce537a; font-weight: bold;">Gitignore</span>,
+    <span style="color: #7590db;">git_global_matcher</span>: <span style="color: #ce537a; font-weight: bold;">Arc</span>&lt;<span style="color: #ce537a; font-weight: bold;">Gitignore</span>&gt;,
+    <span style="color: #7590db;">git_ignore_matcher</span>: <span style="color: #ce537a; font-weight: bold;">Gitignore</span>,
+    <span style="color: #7590db;">git_exclude_matcher</span>: <span style="color: #ce537a; font-weight: bold;">Gitignore</span>,
+    <span style="color: #7590db;">has_git</span>: <span style="color: #ce537a; font-weight: bold;">bool</span>,
+    <span style="color: #7590db;">opts</span>: <span style="color: #ce537a; font-weight: bold;">IgnoreOptions</span>,
+}
+</pre>
+</div>
+
+<p>
+The <code>Ignore</code>
+struct is a wrapper around an atomic reference counter to the actual data
+(namely, the <code>IgnoreInner</code>). A first interesting field inside that struct is
+<code>parent</code>, that is an <code>Option&lt;Ignore&gt;</code>. It points to a parent entry if present.
+So, this is where the tree structure comes from: the <code>Arc</code> can be shared, so
+multiple <code>Ignore</code> can share the same parent. But that's not all; they can also
+be cached in the <code>compiled</code> field, that has a quite complex type:
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-rust"><span style="color: #ce537a; font-weight: bold;">Arc</span>&lt;<span style="color: #ce537a; font-weight: bold;">RwLock</span>&lt;<span style="color: #ce537a; font-weight: bold;">HashMap</span>&lt;<span style="color: #ce537a; font-weight: bold;">OsString</span>, <span style="color: #ce537a; font-weight: bold;">Ignore</span>&gt;&gt;&gt;
+</pre>
+</div>
+
+<p>
+This is the cache of <code>Ignore</code> instances that is shared among all of them.
+Let's try to break it down:
+</p>
+<ul class="org-ul">
+<li>the <code>HashMap</code> maps paths to <code>Ignore</code> instances (as expected);
+</li>
+<li>the <code>RwLock</code> allows the map to be shared and modified across different
+threads, without causing data races;
+</li>
+<li>and finally the <code>Arc</code> allow the cache to be owned safely by different owners
+in different threads.
+</li>
+</ul>
+
+<p>
+Every time a new <code>Ignore</code> instance has to be built and added to a tree, the
+implementation first looks in the cache, trying to reuse the existing instances.
+The tree is built dynamically, while crawling the directories, looking for the
+specific ignore files (e.g. <code>.gitignore</code>, <code>.ignore</code>, or <code>.rgignore</code>). The tree
+gets also custom ignore patterns from the command line, and adds them to the
+tree too.
+</p>
+
+<p>
+Another interesting bit here is the <code>add_parents</code> signature for <code>Ignore</code>:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>ignore/src/dir.rs:149</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">add_parents</span>&lt;<span style="color: #7590db;">P</span>: <span style="color: #ce537a; font-weight: bold;">AsRef</span>&lt;<span style="color: #ce537a; font-weight: bold;">Path</span>&gt;&gt;(&amp;<span style="color: #4f97d7; font-weight: bold;">self</span>, <span style="color: #7590db;">path</span>: <span style="color: #ce537a; font-weight: bold;">P</span>) -&gt; (<span style="color: #ce537a; font-weight: bold;">Ignore</span>, <span style="color: #ce537a; font-weight: bold;">Option</span>&lt;<span style="color: #ce537a; font-weight: bold;">Error</span>&gt;);
+</pre>
+</div>
+
+<p>
+Instead of returning a <code>Result&lt;Ignore, Error&gt;</code>, it returns a pair, that contains
+always a result and optionally an error. In this way partial failures are
+allowed. If you remember, the error value can also be a vector of errors, so the
+function can collect them while working, but then it can also return a (maybe
+partial) result in the end. I found this approach very interesting.
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-sec-5" class="outline-2">
+<h2 id="sec-5"><span class="section-number-2">5</span> The search process</h2>
+<div class="outline-text-2" id="text-5">
+<p>
+In this section we will look at how the regex search inside a file is
+implemented. This process involves some modules in <code>ripgrep</code> and also the <code>grep</code>
+crate.
+</p>
+
+<p>
+Everything starts from <code>Worker::do_work</code> in <code>main.rs</code>. Based on the type of the
+file passed in, it calls <code>search</code> or <code>search_mmap</code>. The first function is used
+to read the input one chunk at a time and then search, while the second is used
+to search into a memory mapped input. In this case there is no need to read the
+file into a buffer, because it is already available in memory, or more
+precisely, the kernel will take care of this illusion.
+</p>
+
+<p>
+The <code>search</code> function just creates a new <code>Searcher</code> and calls <code>run</code> on it.
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>search_stream.rs:224</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">impl</span>&lt;'<span style="color: #7590db;">a</span>, <span style="color: #7590db;">R</span>: <span style="color: #a45bad;">io</span>::<span style="color: #ce537a; font-weight: bold;">Read</span>, <span style="color: #7590db;">W</span>: <span style="color: #ce537a; font-weight: bold;">Terminal</span> + <span style="color: #ce537a; font-weight: bold;">Send</span>&gt; <span style="color: #ce537a; font-weight: bold;">Searcher</span>&lt;'<span style="color: #7590db;">a</span>, <span style="color: #ce537a; font-weight: bold;">R</span>, <span style="color: #ce537a; font-weight: bold;">W</span>&gt; {
+    <span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">run</span>(<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #4f97d7; font-weight: bold;">self</span>) -&gt; <span style="color: #ce537a; font-weight: bold;">Result</span>&lt;<span style="color: #ce537a; font-weight: bold;">u64</span>, <span style="color: #ce537a; font-weight: bold;">Error</span>&gt;;
+}
+</pre>
+</div>
+
+<p>
+The first interesting thing to note here is that the <code>run</code> function actually
+consumes <code>self</code>, so you can't actually run the method twice. Why is that? Let's
+have a look at the <code>new</code> method, that creates this struct:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>search_stream.rs:135</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">impl</span>&lt;'<span style="color: #7590db;">a</span>, <span style="color: #7590db;">R</span>: <span style="color: #a45bad;">io</span>::<span style="color: #ce537a; font-weight: bold;">Read</span>, <span style="color: #7590db;">W</span>: <span style="color: #ce537a; font-weight: bold;">Terminal</span> + <span style="color: #ce537a; font-weight: bold;">Send</span>&gt; <span style="color: #ce537a; font-weight: bold;">Searcher</span>&lt;'<span style="color: #7590db;">a</span>, <span style="color: #ce537a; font-weight: bold;">R</span>, <span style="color: #ce537a; font-weight: bold;">W</span>&gt; {
+    <span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">new</span>(<span style="color: #7590db;">inp</span>: &amp;'<span style="color: #7590db;">a</span> <span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #ce537a; font-weight: bold;">InputBuffer</span>,
+               <span style="color: #7590db;">printer</span>: &amp;'<span style="color: #7590db;">a</span> <span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #ce537a; font-weight: bold;">Printer</span>&lt;<span style="color: #ce537a; font-weight: bold;">W</span>&gt;,
+               <span style="color: #7590db;">grep</span>: &amp;'<span style="color: #7590db;">a</span> <span style="color: #ce537a; font-weight: bold;">Grep</span>,
+               <span style="color: #7590db;">path</span>: &amp;'<span style="color: #7590db;">a</span> <span style="color: #ce537a; font-weight: bold;">Path</span>,
+               <span style="color: #7590db;">haystack</span>: <span style="color: #ce537a; font-weight: bold;">R</span>) -&gt; <span style="color: #ce537a; font-weight: bold;">Searcher</span>&lt;'<span style="color: #7590db;">a</span>, <span style="color: #ce537a; font-weight: bold;">R</span>, <span style="color: #ce537a; font-weight: bold;">W</span>&gt;;
+}
+</pre>
+</div>
+
+<p>
+It takes a bunch of arguments and stores them into a new <code>Searcher</code> instance.
+All the arguments to <code>Searcher</code> are passed as reference, except <code>haystack</code> which
+is the <code>Read</code> stream representing the file. This means that when this struct
+will be destroyed, the file will be gone too. Whenever you complete the search
+for a file, you don't have to do it again, indeed. You can enforce this usage by
+consuming the input file in the <code>run</code> function, or take its ownership in the
+constructor and force the <code>run</code> function to consume <code>self</code>.
+</p>
+
+<p>
+Since we cannot run the search twice using the same <code>Searcher</code> instance, why
+don't we just use a function then? The approach used here has several
+advantages:
+</p>
+
+<ol class="org-ol">
+<li>you get the behavior that the search cannot be run twice with the same file
+(but that's nothing that a free function could not do);
+</li>
+<li>you can split the function among different private functions, without passing
+around all the arguments; they will all take <code>self</code> by reference (maybe also
+<code>&amp;mut self</code>) and just use the member variables.
+</li>
+</ol>
+
+<p>
+So, instead of:
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">helper1</span>(<span style="color: #7590db;">inp</span>: &amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #ce537a; font-weight: bold;">InputBuffer</span>,
+           <span style="color: #7590db;">printer</span>: &amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #ce537a; font-weight: bold;">Printer</span>&lt;<span style="color: #ce537a; font-weight: bold;">W</span>&gt;,
+           <span style="color: #7590db;">grep</span>: &amp;<span style="color: #ce537a; font-weight: bold;">Grep</span>,
+           <span style="color: #7590db;">path</span>: &amp;<span style="color: #ce537a; font-weight: bold;">Path</span>,
+           <span style="color: #7590db;">haystack</span>: &amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #ce537a; font-weight: bold;">R</span>)
+{
+    <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">do something with path, grep, etc</span>
+}
+</pre>
+</div>
+
+<p>
+we have:
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">helper1</span>(&amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #4f97d7; font-weight: bold;">self</span>) {
+    <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">do something with self.path, self.grep, etc</span>
+}
+</pre>
+</div>
+
+<p>
+The end result is much nicer.
+</p>
+
+<p>
+The first variable that the <code>Searcher</code> takes is an <code>InputBuffer</code>. It is defined
+in the same <code>search_stream</code> module, and it provides buffering for the input
+file. It has the interesting feature to be able to keep part of the data across
+reads. This is needed, for example, when the user requests context lines, or
+when a single read is not enough to reach the next end of line.
+</p>
+
+<p>
+The <code>fill</code> function in the <code>InputBuffer</code>, reads from the input and optionally
+rolls over the contents of the buffer starting from the <code>keep_from</code> index:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>search_stream.rs:521</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">fill</span>&lt;<span style="color: #7590db;">R</span>: <span style="color: #a45bad;">io</span>::<span style="color: #ce537a; font-weight: bold;">Read</span>&gt;(&amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #4f97d7; font-weight: bold;">self</span>, <span style="color: #7590db;">rdr</span>: &amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #ce537a; font-weight: bold;">R</span>, <span style="color: #7590db;">keep_from</span>: <span style="color: #ce537a; font-weight: bold;">usize</span>) -&gt; <span style="color: #ce537a; font-weight: bold;">Result</span>&lt;<span style="color: #ce537a; font-weight: bold;">bool</span>, <span style="color: #a45bad;">io</span>::<span style="color: #ce537a; font-weight: bold;">Error</span>&gt;;
+</pre>
+</div>
+
+<p>
+The interesting implementation bit here is that the buffer grows whenever it
+needs more room, but it never shrinks. This avoids some re-allocations, at the
+expense of some memory. This approach is perfectly fine in this case, since the
+application is intended to work in one shot and then terminate. In a long
+running application such as a webserver, this is probably not what you want to
+do.
+</p>
+
+<p>
+After the buffer has been filled, the <code>Grep</code> matcher runs, and in case of a
+match, it prints the results according to the options (context lines, line
+numbers, etc.).
+</p>
+
+<p>
+Note that <code>Searcher</code> takes the input buffer by mutable reference. This means
+that it can be reused for the next file, without allocating new memory for the
+buffer with a new <code>Searcher</code> instance.
+</p>
+
+<p>
+I'll be skipping most of the implementation review here, even if the code may be
+interesting. Most of it however is not very relevant outside this specific case.
+If you are interesting you can skim through the <code>search_stream</code> module code.
+</p>
+
+<p>
+The other case is covered by the <code>search_mmap</code> function, that creates a
+<code>BufferSearcher</code>, defined in the <code>search_buffer</code> module, and calls run on it,
+like in the <code>Searcher</code> case:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>search_buffer.rs:98</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">impl</span>&lt;'<span style="color: #7590db;">a</span>, <span style="color: #7590db;">W</span>: <span style="color: #ce537a; font-weight: bold;">Send</span> + <span style="color: #ce537a; font-weight: bold;">Terminal</span>&gt; <span style="color: #ce537a; font-weight: bold;">BufferSearcher</span>&lt;'<span style="color: #7590db;">a</span>, <span style="color: #ce537a; font-weight: bold;">W</span>&gt; {
+    <span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">run</span>(<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #4f97d7; font-weight: bold;">self</span>) -&gt; <span style="color: #ce537a; font-weight: bold;">u64</span>;
+}
+</pre>
+</div>
+
+<p>
+The same reasoning applies here: the struct is created and used only once for
+one file, because the <code>run</code> function takes <code>self</code> by value. The purpose of the
+<code>search_buffer</code> module is to search inside a file completely contained in a
+single buffer, instead of a stream. This buffer is provided by a memory mapped
+file, and it's used only when a stream would be slower.<sup><a id="fnr.4" name="fnr.4" class="footref" href="#fn.4">4</a></sup> This module reuses
+some types provided by the <code>search_stream</code> module:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>search_buffer.rs:16</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">use</span> <span style="color: #a45bad;">search_stream</span>::{<span style="color: #ce537a; font-weight: bold;">IterLines</span>, <span style="color: #ce537a; font-weight: bold;">Options</span>, count_lines, is_binary};
+</pre>
+</div>
+
+<p>
+Notably, it does not use the <code>InputBuffer</code>, since there is nothing to buffer
+here: everything is already available in the given array. The implementation is
+very basic, and it doesn't support some of the features the other module does
+(like showing context lines).
+</p>
+
+<p>
+No big surprises here. The only minor weak point for me is that this module
+depends on the <code>search_stream</code> one. It doesn't actually build on top of it, but
+it just imports some functionality. I'd rather try to move the common
+implementation in another module from which they can both import. This makes
+sense, since the common stuff is indeed not specific to either of the modules.
+</p>
+</div>
+
+<div id="outline-container-sec-5-1" class="outline-3">
+<h3 id="sec-5-1"><span class="section-number-3">5.1</span> The grep crate</h3>
+<div class="outline-text-3" id="text-5-1">
+<p>
+The <code>grep</code> crate provides all you need to regex search into a line. It builds on
+top of the <a href="https://doc.rust-lang.org/regex/regex/index.html">Rust regex</a> crate and adds some optimizations in the <code>literal</code> module.
+The result of a search is a <code>Match</code> instance, which is simply a position inside
+that buffer:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>grep/src/search.rs:12</code></label>
+<pre class="src src-rust"><span style="color: #bc6ec5;">#[derive(Clone, Debug, Default, Eq, PartialEq)]</span>
+<span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">struct</span> <span style="color: #ce537a; font-weight: bold;">Match</span> {
+    <span style="color: #7590db;">start</span>: <span style="color: #ce537a; font-weight: bold;">usize</span>,
+    <span style="color: #7590db;">end</span>: <span style="color: #ce537a; font-weight: bold;">usize</span>,
+}
+</pre>
+</div>
+
+<p>
+The <code>Grep</code> type is cloneable. This is important, since it can be built once
+(which is an expensive operation) and then cloned to all the worker threads:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>grep/src/search.rs:38</code></label>
+<pre class="src src-rust"><span style="color: #bc6ec5;">#[derive(Clone, Debug)]</span>
+<span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">struct</span> <span style="color: #ce537a; font-weight: bold;">Grep</span> {
+    <span style="color: #7590db;">re</span>: <span style="color: #ce537a; font-weight: bold;">Regex</span>,
+    <span style="color: #7590db;">required</span>: <span style="color: #ce537a; font-weight: bold;">Option</span>&lt;<span style="color: #ce537a; font-weight: bold;">Regex</span>&gt;,
+    <span style="color: #7590db;">opts</span>: <span style="color: #ce537a; font-weight: bold;">Options</span>,
+}
+</pre>
+</div>
+
+<p>
+I won't dig into the implementation details, since they are already very well
+covered in the already mentioned <a href="http://blog.burntsushi.net/ripgrep/">Andrew's blog post</a>.
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-sec-6" class="outline-2">
+<h2 id="sec-6"><span class="section-number-2">6</span> Output handling</h2>
+<div class="outline-text-2" id="text-6">
+<p>
+The last bit we are going to investigate now is the output handling. The
+challenge here is that <code>ripgrep</code> needs to write from multiple threads to a
+single console avoiding to interleave the results.
+</p>
+
+<p>
+Here is how the <code>run</code> function in our <code>MultiWorker</code> handles that:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>main.rs:274</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">let</span> <span style="color: #4f97d7; font-weight: bold;">mut</span> outbuf = <span style="color: #4f97d7; font-weight: bold;">self</span>.outbuf.take().unwrap();
+outbuf.clear();
+<span style="color: #4f97d7; font-weight: bold;">let</span> <span style="color: #4f97d7; font-weight: bold;">mut</span> printer = <span style="color: #4f97d7; font-weight: bold;">self</span>.worker.args.printer(outbuf);
+<span style="color: #4f97d7; font-weight: bold;">self</span>.worker.do_work(&amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> printer, work);
+<span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">...</span>
+<span style="color: #4f97d7; font-weight: bold;">let</span> outbuf = printer.into_inner();
+<span style="color: #4f97d7; font-weight: bold;">if</span> !outbuf.get_ref().is_empty() {
+    <span style="color: #4f97d7; font-weight: bold;">let</span> <span style="color: #4f97d7; font-weight: bold;">mut</span> out = <span style="color: #4f97d7; font-weight: bold;">self</span>.out.lock().unwrap();
+    out.write(&amp;outbuf);
+}
+<span style="color: #4f97d7; font-weight: bold;">self</span>.outbuf = <span style="color: #ce537a; font-weight: bold;">Some</span>(outbuf);
+</pre>
+</div>
+
+<p>
+An output buffer is taken from <code>self</code> and passed to a printer. The printer is
+then passed to the worker, that uses it to print the results. So far all the
+output went to the buffer, and not to the actual console. Then, if anything has
+been buffered, lock the output, that is shared across all the workers, and write
+everything. The output buffer is reused in this interesting way: it is kept as
+an <code>Option</code> field inside the <code>MultiWorker</code> itself. For every file, it is taken
+from the option, passed by value to a <code>Printer</code>, and then when the <code>Printer</code> is
+done, put it back in the <code>Option</code>. This allows to keep it mutable and pass it
+around by value without creating it every time.
+</p>
+
+<p>
+The trick used here, to avoid to interleave the prints, is to buffer all the
+matches found in a file into a "virtual terminal" that doesn't print to the
+console. After the search in that file is done, the output is written in one
+shot, by locking a shared <code>Out</code> object and write the buffer contents to the
+actual console.
+</p>
+
+
+<figure>
+<p><img src="out.svg" class="img-responsive" alt="out.svg">
+</p>
+</figure>
+
+<p>
+Let's take a look at the various types involved. The <code>MultiWorker</code> keeps a
+<code>ColoredTerminal</code> instance in its <code>self.outbuf</code> field. Its type depends on the
+platform:
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-rust"><span style="color: #bc6ec5;">#[cfg(not(windows))]</span>
+<span style="color: #7590db;">outbuf</span>: <span style="color: #ce537a; font-weight: bold;">Option</span>&lt;<span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>&lt;<span style="color: #a45bad;">term</span>::<span style="color: #ce537a; font-weight: bold;">TerminfoTerminal</span>&lt;<span style="color: #ce537a; font-weight: bold;">Vec</span>&lt;<span style="color: #ce537a; font-weight: bold;">u8</span>&gt;&gt;&gt;&gt;,
+<span style="color: #bc6ec5;">#[cfg(windows)]</span>
+<span style="color: #7590db;">outbuf</span>: <span style="color: #ce537a; font-weight: bold;">Option</span>&lt;<span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>&lt;<span style="color: #ce537a; font-weight: bold;">WindowsBuffer</span>&gt;&gt;,
+</pre>
+</div>
+
+<p>
+The <code>self.out</code> is the same in all the platforms:
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">let</span> <span style="color: #7590db;">out</span>: <span style="color: #ce537a; font-weight: bold;">Arc</span>&lt;<span style="color: #ce537a; font-weight: bold;">Mutex</span>&lt;<span style="color: #ce537a; font-weight: bold;">Out</span>&gt;&gt;;
+</pre>
+</div>
+
+<p>
+As you can see, it can be shared and mutated by multiple threads, because it is
+wrapped in a <code>Mutex</code> and an <code>Arc</code>. Inside an <code>Out</code> instance, there is the
+terminal used to write directly to the console:
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-rust"><span style="color: #bc6ec5;">#[cfg(not(windows))]</span>
+<span style="color: #4f97d7; font-weight: bold;">let</span> <span style="color: #7590db;">term</span>: <span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>&lt;<span style="color: #a45bad;">term</span>::<span style="color: #ce537a; font-weight: bold;">TerminfoTerminal</span>&lt;<span style="color: #a45bad;">io</span>::<span style="color: #ce537a; font-weight: bold;">BufWriter</span>&lt;<span style="color: #a45bad;">io</span>::<span style="color: #ce537a; font-weight: bold;">Stdout</span>&gt;&gt;&gt;;
+<span style="color: #bc6ec5;">#[cfg(windows)]</span>
+<span style="color: #4f97d7; font-weight: bold;">let</span> <span style="color: #7590db;">term</span>: <span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>&lt;<span style="color: #ce537a; font-weight: bold;">WinConsole</span>&lt;<span style="color: #a45bad;">io</span>::<span style="color: #ce537a; font-weight: bold;">Stdout</span>&gt;&gt;;
+</pre>
+</div>
+
+<p>
+A <code>ColoredTerminal</code> that refers to a <code>TerminfoTerminal</code> on Linux, and to a
+<code>WinConsole</code> on Windows. They are both structs defined in the <a href="https://crates.io/crates/term">term crate</a>.
+</p>
+
+<p>
+But let's step back a and describe all these types a little bit better. The
+<code>Searcher</code> uses a <code>Printer</code> whenever a match is found and the output is enabled.
+The <code>Printer</code> is defined in the <code>printer</code> module and it encapsulates the general
+output logic. It knows how to print a match, given some options, and forwards
+the writes to an inner <code>Terminal</code> type.
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>printer.rs:15</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">struct</span> <span style="color: #ce537a; font-weight: bold;">Printer</span>&lt;<span style="color: #ce537a; font-weight: bold;">W</span>&gt; {
+    <span style="color: #7590db;">wtr</span>: <span style="color: #ce537a; font-weight: bold;">W</span>,
+    <span style="color: #7590db;">has_printed</span>: <span style="color: #ce537a; font-weight: bold;">bool</span>,
+    <span style="color: #7590db;">column</span>: <span style="color: #ce537a; font-weight: bold;">bool</span>,
+    <span style="color: #7590db;">context_separator</span>: <span style="color: #ce537a; font-weight: bold;">Vec</span>&lt;<span style="color: #ce537a; font-weight: bold;">u8</span>&gt;,
+    <span style="color: #7590db;">eol</span>: <span style="color: #ce537a; font-weight: bold;">u8</span>,
+    <span style="color: #7590db;">file_separator</span>: <span style="color: #ce537a; font-weight: bold;">Option</span>&lt;<span style="color: #ce537a; font-weight: bold;">Vec</span>&lt;<span style="color: #ce537a; font-weight: bold;">u8</span>&gt;&gt;,
+    <span style="color: #7590db;">heading</span>: <span style="color: #ce537a; font-weight: bold;">bool</span>,
+    <span style="color: #7590db;">line_per_match</span>: <span style="color: #ce537a; font-weight: bold;">bool</span>,
+    <span style="color: #7590db;">null</span>: <span style="color: #ce537a; font-weight: bold;">bool</span>,
+    <span style="color: #7590db;">replace</span>: <span style="color: #ce537a; font-weight: bold;">Option</span>&lt;<span style="color: #ce537a; font-weight: bold;">Vec</span>&lt;<span style="color: #ce537a; font-weight: bold;">u8</span>&gt;&gt;,
+    <span style="color: #7590db;">with_filename</span>: <span style="color: #ce537a; font-weight: bold;">bool</span>,
+    <span style="color: #7590db;">color_choice</span>: <span style="color: #ce537a; font-weight: bold;">ColorChoice</span>
+}
+</pre>
+</div>
+
+<p>
+Note that I took the comments out to make it shorter. As you can see, there is a
+generic writer <code>W</code> (that is taken by value) and a lot of other options. This
+generic parameter is expected to implement <a href="https://docs.rs/term/0.4.4/term/trait.Terminal.html">term::Terminal</a> and <code>Send</code>, as you can
+see in the implementation:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>printer.rs:73</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">impl</span>&lt;<span style="color: #7590db;">W</span>: <span style="color: #ce537a; font-weight: bold;">Terminal</span> + <span style="color: #ce537a; font-weight: bold;">Send</span>&gt; <span style="color: #ce537a; font-weight: bold;">Printer</span>&lt;<span style="color: #ce537a; font-weight: bold;">W</span>&gt; {
+    <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">printer implementation</span>
+}
+</pre>
+</div>
+
+<p>
+The struct uses the builder pattern again, but in a slightly different flavor.
+The <code>new</code> method takes only a <code>Terminal</code> and sets all the options with a default
+value. To change them, the user needs to call the various builder methods,
+directly on the <code>Printer</code> itself, not on another builder helper. For example:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>printer.rs:121</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">heading</span>(<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #4f97d7; font-weight: bold;">self</span>, <span style="color: #7590db;">yes</span>: <span style="color: #ce537a; font-weight: bold;">bool</span>) -&gt; <span style="color: #ce537a; font-weight: bold;">Printer</span>&lt;<span style="color: #ce537a; font-weight: bold;">W</span>&gt; {
+    <span style="color: #4f97d7; font-weight: bold;">self</span>.heading = yes;
+    <span style="color: #4f97d7; font-weight: bold;">self</span>
+}
+</pre>
+</div>
+
+<p>
+takes <code>self</code> by mutable value and, after changing the <code>heading</code> option, returns
+<code>self</code> by value again.
+</p>
+
+<p>
+The implementation is simple. The public interface provides some methods to
+print the various match components, like the path, the context separator and the
+line contents. The only thing that is still not clear to me is why the <code>Send</code>
+trait is also needed, since I don't see any threading in the struct
+implementation, and all the print methods require a mutable <code>self</code>, e.g.:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>printer.rs:207</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">context_separate</span>(&amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #4f97d7; font-weight: bold;">self</span>) {
+    <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">N.B. We can't use `write` here because of borrowing restrictions.</span>
+    <span style="color: #4f97d7; font-weight: bold;">if</span> <span style="color: #4f97d7; font-weight: bold;">self</span>.context_separator.is_empty() {
+        <span style="color: #4f97d7; font-weight: bold;">return</span>;
+    }
+    <span style="color: #4f97d7; font-weight: bold;">self</span>.has_printed = <span style="color: #4f97d7; font-weight: bold;">true</span>;
+    <span style="color: #4f97d7; font-weight: bold;">let</span> _ = <span style="color: #4f97d7; font-weight: bold;">self</span>.wtr.write_all(&amp;<span style="color: #4f97d7; font-weight: bold;">self</span>.context_separator);
+    <span style="color: #4f97d7; font-weight: bold;">let</span> _ = <span style="color: #4f97d7; font-weight: bold;">self</span>.wtr.write_all(&amp;[<span style="color: #4f97d7; font-weight: bold;">self</span>.eol]);
+}
+</pre>
+</div>
+
+<p>
+In any case, the implementation is more or less straight forward, and in the end
+all the writes are directed to the inner <code>Terminal</code>.
+</p>
+
+<p>
+In the Linux case, the <code>Terminal</code> is the default one provided by the <code>term</code>
+crate itself: <a href="https://docs.rs/term/0.4.4/term/terminfo/struct.TerminfoTerminal.html">TerminfoTerminal</a>. On Windows <code>ripgrep</code> provides a custom
+implementation, since the coloring needs a special treatment, to avoid
+performance hurt:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>terminal_win.rs:5</code></label>
+<pre class="src src-text">This particular implementation is a bit idiosyncratic, and the "in-memory"
+specification is to blame. In particular, on Windows, coloring requires
+communicating with the console synchronously as data is written to stdout.
+This is anathema to how ripgrep fundamentally works: by writing search results
+to intermediate thread local buffers in order to maximize parallelism.
+
+Eliminating parallelism on Windows isn't an option, because that would negate
+a tremendous performance benefit just for coloring.
+
+We've worked around this by providing an implementation of `term::Terminal`
+that records precisely where a color or a reset should be invoked, according
+to a byte offset in the in memory buffer. When the buffer is actually printed,
+we copy the bytes from the buffer to stdout incrementally while invoking the
+corresponding console APIs for coloring at the right location.
+</pre>
+</div>
+
+<p>
+The implementation is provided by <code>WindowsBuffer</code>:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>terminal_win.rs:33</code></label>
+<pre class="src src-rust"><span style="color: #2aa1ae;">/// An in-memory buffer that provides Windows console coloring.</span>
+<span style="color: #bc6ec5;">#[derive(Clone, Debug)]</span>
+<span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">struct</span> <span style="color: #ce537a; font-weight: bold;">WindowsBuffer</span> {
+    <span style="color: #7590db;">buf</span>: <span style="color: #ce537a; font-weight: bold;">Vec</span>&lt;<span style="color: #ce537a; font-weight: bold;">u8</span>&gt;,
+    <span style="color: #7590db;">pos</span>: <span style="color: #ce537a; font-weight: bold;">usize</span>,
+    <span style="color: #7590db;">colors</span>: <span style="color: #ce537a; font-weight: bold;">Vec</span>&lt;<span style="color: #ce537a; font-weight: bold;">WindowsColor</span>&gt;,
+}
+
+<span style="color: #2aa1ae;">/// A color associated with a particular location in a buffer.</span>
+<span style="color: #bc6ec5;">#[derive(Clone, Debug)]</span>
+<span style="color: #4f97d7; font-weight: bold;">struct</span> <span style="color: #ce537a; font-weight: bold;">WindowsColor</span> {
+    <span style="color: #7590db;">pos</span>: <span style="color: #ce537a; font-weight: bold;">usize</span>,
+    <span style="color: #7590db;">opt</span>: <span style="color: #ce537a; font-weight: bold;">WindowsOption</span>,
+}
+
+<span style="color: #2aa1ae;">/// A color or reset directive that can be translated into an instruction to</span>
+<span style="color: #2aa1ae;">/// the Windows console.</span>
+<span style="color: #bc6ec5;">#[derive(Clone, Debug)]</span>
+<span style="color: #4f97d7; font-weight: bold;">enum</span> <span style="color: #ce537a; font-weight: bold;">WindowsOption</span> {
+    <span style="color: #ce537a; font-weight: bold;">Foreground</span>(<span style="color: #ce537a; font-weight: bold;">Color</span>),
+    <span style="color: #ce537a; font-weight: bold;">Background</span>(<span style="color: #ce537a; font-weight: bold;">Color</span>),
+    <span style="color: #ce537a; font-weight: bold;">Reset</span>,
+}
+</pre>
+</div>
+
+<p>
+This struct implements <code>terminfo::Terminal</code> as we said before, and it contains a
+buffer of characters to print, a position on the buffer itself, and a vector of
+colors and positions. Whenever the write is called, the output is buffered in
+<code>self.buf</code>:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>terminal_win.rs:107</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">impl</span> <span style="color: #a45bad;">io</span>::<span style="color: #ce537a; font-weight: bold;">Write</span> <span style="color: #4f97d7; font-weight: bold;">for</span> <span style="color: #ce537a; font-weight: bold;">WindowsBuffer</span> {
+    <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">write</span>(&amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #4f97d7; font-weight: bold;">self</span>, <span style="color: #7590db;">buf</span>: &amp;[<span style="color: #ce537a; font-weight: bold;">u8</span>]) -&gt; <span style="color: #a45bad;">io</span>::<span style="color: #ce537a; font-weight: bold;">Result</span>&lt;<span style="color: #ce537a; font-weight: bold;">usize</span>&gt; {
+        <span style="color: #4f97d7; font-weight: bold;">let</span> n = <span style="color: #bc6ec5;">try!</span>(<span style="color: #4f97d7; font-weight: bold;">self</span>.buf.write(buf));
+        <span style="color: #4f97d7; font-weight: bold;">self</span>.pos += n;
+        <span style="color: #ce537a; font-weight: bold;">Ok</span>(n)
+    }
+
+    <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">flush</span>(&amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #4f97d7; font-weight: bold;">self</span>) -&gt; <span style="color: #a45bad;">io</span>::<span style="color: #ce537a; font-weight: bold;">Result</span>&lt;()&gt; {
+        <span style="color: #ce537a; font-weight: bold;">Ok</span>(())
+    }
+}
+</pre>
+</div>
+
+<p>
+and whenever a coloring option is passed, it is pushed into the <code>colors</code> vector,
+along with the current position:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>terminal_win.rs:119</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">impl</span> <span style="color: #ce537a; font-weight: bold;">Terminal</span> <span style="color: #4f97d7; font-weight: bold;">for</span> <span style="color: #ce537a; font-weight: bold;">WindowsBuffer</span> {
+    <span style="color: #4f97d7; font-weight: bold;">type</span> <span style="color: #ce537a; font-weight: bold;">Output</span> = <span style="color: #ce537a; font-weight: bold;">Vec</span>&lt;<span style="color: #ce537a; font-weight: bold;">u8</span>&gt;;
+
+    <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">fg</span>(&amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #4f97d7; font-weight: bold;">self</span>, <span style="color: #7590db;">fg</span>: <span style="color: #ce537a; font-weight: bold;">Color</span>) -&gt; <span style="color: #a45bad;">term</span>::<span style="color: #ce537a; font-weight: bold;">Result</span>&lt;()&gt; {
+        <span style="color: #4f97d7; font-weight: bold;">self</span>.push(<span style="color: #ce537a; font-weight: bold;">WindowsOption</span>::<span style="color: #ce537a; font-weight: bold;">Foreground</span>(fg));
+        <span style="color: #ce537a; font-weight: bold;">Ok</span>(())
+    }
+    <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">...</span>
+}
+</pre>
+</div>
+
+<p>
+Then, when the higher level logic decides it's time to print everything, the
+<code>print_stdout</code> is called, passing another terminal (the real one, linked with
+the console):
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>terminal_win.rs:72</code></label>
+<pre class="src src-rust"><span style="color: #2aa1ae;">/// Print the contents to the given terminal.</span>
+<span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">print_stdout</span>&lt;<span style="color: #7590db;">T</span>: <span style="color: #ce537a; font-weight: bold;">Terminal</span> + <span style="color: #ce537a; font-weight: bold;">Send</span>&gt;(&amp;<span style="color: #4f97d7; font-weight: bold;">self</span>, <span style="color: #7590db;">tt</span>: &amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #ce537a; font-weight: bold;">T</span>) {
+    <span style="color: #4f97d7; font-weight: bold;">if</span> !tt.supports_color() {
+        <span style="color: #4f97d7; font-weight: bold;">let</span> _ = tt.write_all(&amp;<span style="color: #4f97d7; font-weight: bold;">self</span>.buf);
+        <span style="color: #4f97d7; font-weight: bold;">let</span> _ = tt.flush();
+        <span style="color: #4f97d7; font-weight: bold;">return</span>;
+    }
+    <span style="color: #4f97d7; font-weight: bold;">let</span> <span style="color: #4f97d7; font-weight: bold;">mut</span> last = <span style="color: #a45bad;">0</span>;
+    <span style="color: #4f97d7; font-weight: bold;">for</span> col <span style="color: #4f97d7; font-weight: bold;">in</span> &amp;<span style="color: #4f97d7; font-weight: bold;">self</span>.colors {
+        <span style="color: #4f97d7; font-weight: bold;">let</span> _ = tt.write_all(&amp;<span style="color: #4f97d7; font-weight: bold;">self</span>.buf[last..col.pos]);
+        <span style="color: #4f97d7; font-weight: bold;">match</span> col.opt {
+            <span style="color: #ce537a; font-weight: bold;">WindowsOption</span>::<span style="color: #ce537a; font-weight: bold;">Foreground</span>(c) =&gt; {
+                <span style="color: #4f97d7; font-weight: bold;">let</span> _ = tt.fg(c);
+            }
+            <span style="color: #ce537a; font-weight: bold;">WindowsOption</span>::<span style="color: #ce537a; font-weight: bold;">Background</span>(c) =&gt; {
+                <span style="color: #4f97d7; font-weight: bold;">let</span> _ = tt.bg(c);
+            }
+            <span style="color: #ce537a; font-weight: bold;">WindowsOption</span>::<span style="color: #ce537a; font-weight: bold;">Reset</span> =&gt; {
+                <span style="color: #4f97d7; font-weight: bold;">let</span> _ = tt.reset();
+            }
+        }
+        last = col.pos;
+    }
+    <span style="color: #4f97d7; font-weight: bold;">let</span> _ = tt.write_all(&amp;<span style="color: #4f97d7; font-weight: bold;">self</span>.buf[last..]);
+    <span style="color: #4f97d7; font-weight: bold;">let</span> _ = tt.flush();
+}
+</pre>
+</div>
+
+<p>
+Here, if the terminal does not support coloring, there is nothing special to do,
+and all the buffer contents are written. Otherwise, for every color option, it
+writes the buffer contents until the recorded position for that option, and than
+it applies the option. This is repeated until the end of the buffer.
+</p>
+
+<p>
+The terminal is not used as is by the higher level logic, but wrapped inside a
+<code>ColoredTerminal</code> instance:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>out.rs:111</code></label>
+<pre class="src src-rust"><span style="color: #bc6ec5;">#[derive(Clone, Debug)]</span>
+<span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">enum</span> <span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>&lt;<span style="color: #7590db;">T</span>: <span style="color: #ce537a; font-weight: bold;">Terminal</span> + <span style="color: #ce537a; font-weight: bold;">Send</span>&gt; {
+    <span style="color: #ce537a; font-weight: bold;">Colored</span>(<span style="color: #ce537a; font-weight: bold;">T</span>),
+    <span style="color: #ce537a; font-weight: bold;">NoColor</span>(<span style="color: #ce537a; font-weight: bold;">T</span>::<span style="color: #ce537a; font-weight: bold;">Output</span>),
+}
+</pre>
+</div>
+
+<p>
+The purpose of this type is simple: determine if the current terminal supports
+coloring, and if so use it. If not, just drop the terminal and use its internal
+writer type. Determine color support is a costly operation, so it's done only
+once, and the result is cached in a static variable, with the help of the
+<a href="%0A">lazy_static</a> crate:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>out.rs:123</code></label>
+<pre class="src src-rust"><span style="color: #bc6ec5;">lazy_static!</span> {
+    <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">Only pay for parsing the terminfo once.</span>
+    <span style="color: #4f97d7; font-weight: bold;">static</span> <span style="color: #4f97d7; font-weight: bold;">ref</span> <span style="color: #7590db;">TERMINFO</span>: <span style="color: #ce537a; font-weight: bold;">Option</span>&lt;<span style="color: #ce537a; font-weight: bold;">TermInfo</span>&gt; = {
+        <span style="color: #4f97d7; font-weight: bold;">match</span> <span style="color: #ce537a; font-weight: bold;">TermInfo</span>::from_env() {
+            <span style="color: #ce537a; font-weight: bold;">Ok</span>(info) =&gt; <span style="color: #ce537a; font-weight: bold;">Some</span>(info),
+            <span style="color: #ce537a; font-weight: bold;">Err</span>(err) =&gt; {
+                <span style="color: #bc6ec5;">debug!</span>(<span style="color: #2d9574;">"error loading terminfo for coloring: {}"</span>, err);
+                <span style="color: #ce537a; font-weight: bold;">None</span>
+            }
+        }
+    };
+}
+</pre>
+</div>
+
+<p>
+The type then implements some specialized constructors for a bunch of types:
+</p>
+<ul class="org-ul">
+<li><code>WindowsBuffer</code>;
+</li>
+<li><code>WinConsole&lt;io::Stdout&gt;</code>;
+</li>
+<li>and the one for the generic writer <code>W: io::Write + Send</code>.
+</li>
+</ul>
+
+<p>
+If the terminal then supports coloring, it uses the <code>Colored(T)</code> enum value
+(where <code>T</code> is <code>T: Terminal + Send</code>). In this case the <code>ColoredTerminal</code> instance
+contains a <code>Terminal</code>. In the other case, the <code>NoColor(T::Output)</code> value is
+selected and a plain <code>io::Write</code> is used. <code>ColoredTerminal</code> then implements
+<code>Terminal</code> itself in this way:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>out.rs:254</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">impl</span>&lt;<span style="color: #7590db;">T</span>: <span style="color: #ce537a; font-weight: bold;">Terminal</span> + <span style="color: #ce537a; font-weight: bold;">Send</span>&gt; <span style="color: #a45bad;">term</span>::<span style="color: #ce537a; font-weight: bold;">Terminal</span> <span style="color: #4f97d7; font-weight: bold;">for</span> <span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>&lt;<span style="color: #ce537a; font-weight: bold;">T</span>&gt; {
+    <span style="color: #4f97d7; font-weight: bold;">type</span> <span style="color: #ce537a; font-weight: bold;">Output</span> = <span style="color: #ce537a; font-weight: bold;">T</span>::<span style="color: #ce537a; font-weight: bold;">Output</span>;
+
+    <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">fg</span>(&amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #4f97d7; font-weight: bold;">self</span>, <span style="color: #7590db;">fg</span>: <span style="color: #a45bad;">term</span>::<span style="color: #a45bad;">color</span>::<span style="color: #ce537a; font-weight: bold;">Color</span>) -&gt; <span style="color: #a45bad;">term</span>::<span style="color: #ce537a; font-weight: bold;">Result</span>&lt;()&gt; {
+        <span style="color: #4f97d7; font-weight: bold;">self</span>.map_result(|w| w.fg(fg))
+    }
+    <span style="color: #2aa1ae;">// </span><span style="color: #2aa1ae;">other very similar implementations...</span>
+}
+</pre>
+</div>
+
+<p>
+The intended behavior here is to forward the function to the inner terminal, if
+present, or return an error. A possible solution would have been to <code>match self</code>
+in this way:
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">match</span> *<span style="color: #4f97d7; font-weight: bold;">self</span> {
+    <span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>::<span style="color: #ce537a; font-weight: bold;">Colored</span>(<span style="color: #4f97d7; font-weight: bold;">ref</span> <span style="color: #4f97d7; font-weight: bold;">mut</span> w) =&gt; w.fg(fg),
+    <span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>::<span style="color: #ce537a; font-weight: bold;">NoColor</span>(_) =&gt; <span style="color: #ce537a; font-weight: bold;">Err</span>(<span style="color: #a45bad;">term</span>::<span style="color: #ce537a; font-weight: bold;">Error</span>::<span style="color: #ce537a; font-weight: bold;">NotSupported</span>),
+}
+</pre>
+</div>
+
+<p>
+for all the functions. The solution adopted here is more elegant, as it
+Implements a <code>map_result</code> that applies the given function to the inner
+<code>Terminal</code> if it's present and returns an error otherwise:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>out.rs:217</code></label>
+<pre class="src src-rust"><span style="color: #4f97d7; font-weight: bold;">impl</span>&lt;<span style="color: #7590db;">T</span>: <span style="color: #ce537a; font-weight: bold;">Terminal</span> + <span style="color: #ce537a; font-weight: bold;">Send</span>&gt; <span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>&lt;<span style="color: #ce537a; font-weight: bold;">T</span>&gt; {
+    <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">map_result</span>&lt;<span style="color: #ce537a; font-weight: bold;">F</span>&gt;(&amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #4f97d7; font-weight: bold;">self</span>, <span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #7590db;">f</span>: <span style="color: #ce537a; font-weight: bold;">F</span>) -&gt; <span style="color: #a45bad;">term</span>::<span style="color: #ce537a; font-weight: bold;">Result</span>&lt;()&gt;
+        <span style="color: #4f97d7; font-weight: bold;">where</span> <span style="color: #7590db;">F</span>: <span style="color: #ce537a; font-weight: bold;">FnMut</span>(&amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #ce537a; font-weight: bold;">T</span>) -&gt; <span style="color: #a45bad;">term</span>::<span style="color: #ce537a; font-weight: bold;">Result</span>&lt;()&gt;
+    {
+        <span style="color: #4f97d7; font-weight: bold;">match</span> *<span style="color: #4f97d7; font-weight: bold;">self</span> {
+            <span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>::<span style="color: #ce537a; font-weight: bold;">Colored</span>(<span style="color: #4f97d7; font-weight: bold;">ref</span> <span style="color: #4f97d7; font-weight: bold;">mut</span> w) =&gt; f(w),
+            <span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>::<span style="color: #ce537a; font-weight: bold;">NoColor</span>(_) =&gt; <span style="color: #ce537a; font-weight: bold;">Err</span>(<span style="color: #a45bad;">term</span>::<span style="color: #ce537a; font-weight: bold;">Error</span>::<span style="color: #ce537a; font-weight: bold;">NotSupported</span>),
+        }
+    }
+}
+</pre>
+</div>
+
+<p>
+In this way the whole <code>Terminal</code> implementation is just a bunch of one-liners.
+</p>
+
+<p>
+The missing piece of this puzzle is the <code>Out</code> struct. The comment on top of the
+struct speaks for itself:
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><code>out.rs:12</code></label>
+<pre class="src src-rust"><span style="color: #2aa1ae;">/// Out controls the actual output of all search results for a particular file</span>
+<span style="color: #2aa1ae;">/// to the end user.</span>
+<span style="color: #2aa1ae;">///</span>
+<span style="color: #2aa1ae;">/// (The difference between Out and Printer is that a Printer works with</span>
+<span style="color: #2aa1ae;">/// individual search results where as Out works with search results for each</span>
+<span style="color: #2aa1ae;">/// file as a whole. For example, it knows when to print a file separator.)</span>
+<span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">struct</span> <span style="color: #ce537a; font-weight: bold;">Out</span> {
+    <span style="color: #bc6ec5;">#[cfg(not(windows))]</span>
+    <span style="color: #7590db;">term</span>: <span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>&lt;<span style="color: #a45bad;">term</span>::<span style="color: #ce537a; font-weight: bold;">TerminfoTerminal</span>&lt;<span style="color: #a45bad;">io</span>::<span style="color: #ce537a; font-weight: bold;">BufWriter</span>&lt;<span style="color: #a45bad;">io</span>::<span style="color: #ce537a; font-weight: bold;">Stdout</span>&gt;&gt;&gt;,
+    <span style="color: #bc6ec5;">#[cfg(windows)]</span>
+    <span style="color: #7590db;">term</span>: <span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>&lt;<span style="color: #ce537a; font-weight: bold;">WinConsole</span>&lt;<span style="color: #a45bad;">io</span>::<span style="color: #ce537a; font-weight: bold;">Stdout</span>&gt;&gt;,
+    <span style="color: #7590db;">printed</span>: <span style="color: #ce537a; font-weight: bold;">bool</span>,
+    <span style="color: #7590db;">file_separator</span>: <span style="color: #ce537a; font-weight: bold;">Option</span>&lt;<span style="color: #ce537a; font-weight: bold;">Vec</span>&lt;<span style="color: #ce537a; font-weight: bold;">u8</span>&gt;&gt;,
+}
+</pre>
+</div>
+
+<p>
+The implementation is straightforward: whenever <code>write</code> is called with a
+<code>ColoredTerminal</code> as a buffer, it prints a separator (except for the first
+file), then prints the buffer contents and then flushes the terminal. Here is
+the Unix version:
+</p>
+
+<div class="org-src-container">
+
+<pre class="src src-rust"><span style="color: #bc6ec5;">#[cfg(not(windows))]</span>
+<span style="color: #4f97d7; font-weight: bold;">pub</span> <span style="color: #4f97d7; font-weight: bold;">fn</span> <span style="color: #bc6ec5; font-weight: bold;">write</span>(&amp;<span style="color: #4f97d7; font-weight: bold;">mut</span> <span style="color: #4f97d7; font-weight: bold;">self</span>, <span style="color: #7590db;">buf</span>: &amp;<span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>&lt;<span style="color: #a45bad;">term</span>::<span style="color: #ce537a; font-weight: bold;">TerminfoTerminal</span>&lt;<span style="color: #ce537a; font-weight: bold;">Vec</span>&lt;<span style="color: #ce537a; font-weight: bold;">u8</span>&gt;&gt;&gt;) {
+    <span style="color: #4f97d7; font-weight: bold;">self</span>.write_sep();
+    <span style="color: #4f97d7; font-weight: bold;">match</span> *buf {
+        <span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>::<span style="color: #ce537a; font-weight: bold;">Colored</span>(<span style="color: #4f97d7; font-weight: bold;">ref</span> tt) =&gt; {
+            <span style="color: #4f97d7; font-weight: bold;">let</span> _ = <span style="color: #4f97d7; font-weight: bold;">self</span>.term.write_all(tt.get_ref());
+        }
+        <span style="color: #ce537a; font-weight: bold;">ColoredTerminal</span>::<span style="color: #ce537a; font-weight: bold;">NoColor</span>(<span style="color: #4f97d7; font-weight: bold;">ref</span> buf) =&gt; {
+            <span style="color: #4f97d7; font-weight: bold;">let</span> _ = <span style="color: #4f97d7; font-weight: bold;">self</span>.term.write_all(buf);
+        }
+    }
+    <span style="color: #4f97d7; font-weight: bold;">self</span>.write_done();
+}
+</pre>
+</div>
+
+<p>
+A very similar but not exactly equal version is provided for Windows, so there
+is some code duplication. It would be better to abstract these details in
+<code>ColoredTerminal</code>, providing a <code>write_all</code> method there, or in alternative, to
+introduce a new trait used by <code>ColoredTerminal</code> itself that does the same and
+than make <code>TerminfoTerminal</code>, <code>WindowsBuffer</code> and <code>WindowsConsole</code> to implement
+it.
+</p>
+</div>
+</div>
+
+<div id="outline-container-sec-7" class="outline-2">
+<h2 id="sec-7"><span class="section-number-2">7</span> Concluding remarks</h2>
+<div class="outline-text-2" id="text-7">
+<p>
+In this post we have done a <code>ripgrep</code> code review, with the main focus on the
+design decisions and the interesting implementation solutions. The review is far
+from being complete, but my goal was to look at the patterns and break them
+down, in hope that they can be used in similar contexts by other projects.
+</p>
+
+<p>
+In general the code is very clean, a part certain functions that would benefit
+from some more comments. There is however an extensive usage of
+<code>#[inline(always)]</code> and <code>#[inline(never)]</code> directives in the code, that I could
+not explain. I wonder if they have been added after profiling and if so, why the
+compiler have failed to identify them correctly. A possible use case is
+intra-crate inlining, but compiling with <code>rustc -C lto</code> already allows to inline
+everything (by slowing down compilation).<sup><a id="fnr.5" name="fnr.5" class="footref" href="#fn.5">5</a></sup>
+</p>
+
+<p>
+In any case, I found the <code>ripgrep</code> crate a beautiful peace of software, from
+which I could learn a lot. I hope I was able to convey this beauty with this
+post.
+</p>
+
+<p>
+That's all folks.
+</p>
+</div>
+</div>
+<div id="footnotes">
+<h2 class="footnotes">Footnotes: </h2>
+<div id="text-footnotes">
+
+<div class="footdef"><sup><a id="fn.1" name="fn.1" class="footnum" href="#fnr.1">1</a></sup> <p class="footpara">
+In this case <code>Box&lt;Error&gt;</code>, since a recursive type cannot embed itself,
+otherwise it would be impossible to compute the size of the type.
+</p></div>
+
+<div class="footdef"><sup><a id="fn.2" name="fn.2" class="footnum" href="#fnr.2">2</a></sup> <p class="footpara">
+You can find a good reference on the error handling topic in <a href="https://doc.rust-lang.org/stable/book/error-handling.html">the Rust
+book</a>.
+</p></div>
+
+<div class="footdef"><sup><a id="fn.3" name="fn.3" class="footnum" href="#fnr.3">3</a></sup> <p class="footpara">
+Please bear in mind that I have taken out the comments to make it
+shorter.
+</p></div>
+
+<div class="footdef"><sup><a id="fn.4" name="fn.4" class="footnum" href="#fnr.4">4</a></sup> <p class="footpara">
+Generally this happens when searching into a single huge file.
+</p></div>
+
+<div class="footdef"><sup><a id="fn.5" name="fn.5" class="footnum" href="#fnr.5">5</a></sup> <p class="footpara">
+See <a href="https://internals.rust-lang.org/t/when-should-i-use-inline/598">When should I use inline</a>.
+</p></div>
+
+
+</div>
+</div></div>
+<div class="col-md-3"><nav id="table-of-contents">
+    <div id="text-table-of-contents" class="bs-docs-sidebar">
+        <ul class="nav">
+            <li><a href="#sec-1">1. Introduction</a></li>
+            <li><a href="#sec-2">2. The big picture</a></li>
+            <li><a href="#sec-3">3. Main</a>
+                <ul class="nav">
+                    <li><a href="#sec-3-1">3.1. Mono thread</a></li>
+                </ul>
+            </li>
+            <li><a href="#sec-4">4. The file listing</a>
+                <ul class="nav">
+                    <li><a href="#sec-4-1">4.1. Ignore patterns</a></li>
+                </ul>
+            </li>
+            <li><a href="#sec-5">5. The search process</a>
+                <ul class="nav">
+                    <li><a href="#sec-5-1">5.1. The grep crate</a></li>
+                </ul>
+            </li>
+            <li><a href="#sec-6">6. Output handling</a></li>
+            <li><a href="#sec-7">7. Concluding remarks</a></li>
+        </ul>
+    </div>
+</nav>
+</div>
+</div></div>
+
+<footer id="postamble" class="">
+<div><p class="date">Created: 2016-12-03 Sat 00:35</p>
+<p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.1.1 (<a href="http://orgmode.org">Org-mode</a> 9.0.1)</p>
+</div>
+</footer>
+    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+    <script src="../javascripts/analytics.js"></script>
+</body>
+</html>
