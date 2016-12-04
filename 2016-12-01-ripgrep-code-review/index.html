@@ -1638,10 +1638,39 @@ In any case, I found the <code>ripgrep</code> crate a beautiful peace of softwar
 which I could learn a lot. I hope I was able to convey this beauty with this
 post.
 </p>
+</div>
+
+<div id="outline-container-sec-7-1" class="outline-3">
+<h3 id="sec-7-1"><span class="section-number-3">7.1</span> Feedback</h3>
+<div class="outline-text-3" id="text-7-1">
+<p>
+<a href="https://twitter.com/burntsushi5">Andrew</a> posted his feedback on Twitter:
+</p>
+<ul class="org-ul">
+<li>output handling has been reworked a in <a href="https://github.com/BurntSushi/ripgrep/pull/240">PR#240</a>, so interested people might give
+it a glance;
+</li>
+<li>regarding the inline directives: he applied them after profiling, and
+<code>#[inline(never)]</code> can make the profile reports more readable, but they will
+be revisited;
+</li>
+<li>the search code will be probably reworked and incorporated in the <code>grep</code> crate.
+</li>
+</ul>
+
+<p>
+I have corrected a typo, thanks <a href="https://twitter.com/toqueteos">@toquetos</a>.
+</p>
+
+<p>
+There is some discussion going on in the <a href="https://m.reddit.com/r/rust/comments/5gayqw/ripgrep_code_review/">r/rust</a> subreddit. Thank you guys for
+the feedback and the kind words.
+</p>
 
 <p>
 That's all folks.
 </p>
+</div>
 </div>
 </div>
 <div id="footnotes">
@@ -1695,7 +1724,11 @@ See <a href="https://internals.rust-lang.org/t/when-should-i-use-inline/598">Whe
                 </ul>
             </li>
             <li><a href="#sec-6">6. Output handling</a></li>
-            <li><a href="#sec-7">7. Concluding remarks</a></li>
+            <li><a href="#sec-7">7. Concluding remarks</a>
+                <ul class="nav">
+                    <li><a href="#sec-7-1">7.1. Feedback</a></li>
+                </ul>
+            </li>
         </ul>
     </div>
 </nav>
