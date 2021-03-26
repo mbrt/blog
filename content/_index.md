@@ -1,8 +1,8 @@
-+++
-title = "Welcome"
-disableTitleSeparator = true
-+++
+---
+title: "Welcome"
+---
 
 Feel free to check the [posts](/posts) to see some of the theme features. There are some [extra posts](/tags/extra) available.
 
-You can also pick a different color by using the colored square in the footer.
+You can switch between dark and ligth theme by using the switcher in the
+footer.
