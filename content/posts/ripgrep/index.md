@@ -1,8 +1,8 @@
 ---
 title: "Ripgrep code review"
 date: 2016-12-01
-toc: true
 tags: [rust, code-review]
+toc: true
 ---
 
 I've been playing around with [Rust](https://www.rust-lang.org) for a year and a

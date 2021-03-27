@@ -64,7 +64,7 @@ paginate = 5
     # The default is false
     ignoreSystemSettings = true
     # Accent colors for light and dark mode respectively
-    lightAccent  = "#225670" # Default is "#225670"
+    lightAccent  = "#18284C" # Default is "#225670"
     darkAccent   = "#db474f" # Default is "#dd587c"
     # Use an icon or text for footnote return links
     # The default is false
