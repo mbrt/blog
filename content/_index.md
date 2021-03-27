@@ -2,7 +2,13 @@
 title: "Welcome"
 ---
 
-Feel free to check the [posts](/posts) to see some of the theme features. There are some [extra posts](/tags/extra) available.
+My name is Michele Bertasi (more about me in [About](/about)). This is a place
+for me to collect the results of my investigations, when I have some time to
+write them down. Head over to [Posts](/posts).
 
-You can switch between dark and ligth theme by using the switcher in the
+---
+
+This site has been built with [Hugo](https://gohugo.io) with the
+[Color Your World](https://themes.gohugo.io/hugo-theme-color-your-world/)
+theme. You can switch between dark and ligth theme by using the switcher in the
 footer.
