@@ -1,0 +1,95 @@
+baseURL: "https://blog.mbrt.dev/"
+title: mbrt blog
+paginate: 5
+theme: PaperMod
+
+enableInlineShortcodes: true
+enableRobotsTXT: true
+buildDrafts: false
+buildFuture: false
+buildExpired: false
+enableEmoji: true
+
+minify:
+  disableXML: true
+  minifyOutput: true
+
+languages:
+  en:
+    languageName: "English"
+    weight: 1
+    menu:
+      main:
+        - name: Archive
+          url: archives/
+          weight: 10
+        - name: Search
+          url: search/
+          weight: 10
+        - name: Tags
+          url: tags/
+          weight: 10
+
+outputs:
+  home:
+    - HTML
+    - RSS
+    - JSON
+
+params:
+  env: production # to enable google analytics, opengraph, twitter-cards and schema.
+  description: "mbrt personal blog"
+  author: Michele Bertasi
+  cover: "me.jpg"
+  coverAlt: "Picture of a real world pirate."
+
+  defaultTheme: auto
+  ShowShareButtons: true
+  ShowReadingTime: true
+  displayFullLangName: true
+  ShowPostNavLinks: true
+  ShowBreadCrumbs: true
+  ShowToc: true
+
+  assets:
+    disableHLJS: true
+
+  # For a simple 404
+  notFound:
+    title: "Page not found"
+    description: "This page was not found."
+    paragraph: "Nothing to see here, buddy."
+
+  homeInfoParams:
+    Title: "mbrt blog"
+    Content: >
+      Short intro: I'm a Software Engineer / Site Reliability Engineer. My main
+      interests are related to Linux, Kubernetes, C++, Rust, Go, security and reverse
+      engineering. Besides that I love reading sci-fi and historical novels, travel,
+      listen to music and do sport with friends (futsal, climbing, running and
+      swimming). 
+
+  socialIcons:
+    - name: github
+      url: "https://github.com/mbrt"
+    - name: twitter
+      url: "https://twitter.com/mbrt_dev"
+    - name: RsS
+      url: "index.xml"
+
+  cover:
+    hidden: true # hide everywhere but not in structured data
+    hiddenInList: true # hide on list pages and home
+    hiddenInSingle: true # hide on single page
+
+markup:
+  goldmark:
+    renderer:
+      unsafe: true
+  highlight:
+    guessSyntax: false
+    style: dracula
+
+services:
+  twitter:
+    disableInlineCSS: true

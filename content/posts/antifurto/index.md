@@ -285,13 +285,13 @@ void MonitorController::onAlarmStateChanged(MotionDetector::State state)
 
     switch (state) {
     case State::NO_ALARM:
-    setPicturesInterval_(config::monitorCycleDuration());
-    break;
+        setPicturesInterval_(config::monitorCycleDuration());
+        break;
     case State::PRE_ALARM:
-    setPicturesInterval_(config::monitorCycleDurationOnAlarm());
-    break;
+        setPicturesInterval_(config::monitorCycleDurationOnAlarm());
+        break;
     default:
-    break;
+        break;
     }
     log::info() << "Alarm state: " << state;
 }
@@ -584,7 +584,7 @@ if (!toUploadAfterQueue_.empty()) {
     scheduler_.scheduleAfter(std::chrono::minutes(10), [this] {
             enqueueOlderPictures();
     });
-    }
+}
 ```
 
 The logic is a bit brutal but it works. While there is still something to
