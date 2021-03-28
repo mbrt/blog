@@ -1,0 +1,657 @@
+<!doctype html><html lang=en dir=auto><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=robots content="index, follow"><title>Demystifying container networking | mbrt blog</title><meta name=keywords content="linux,containers"><meta name=description content="Over the last year, at work I had multiple chances to debug how containers work. Recently we had to solve some networking problems a customer had with Kubernetes, and I decided I wanted to know more. Once the problem was solved, I spent more time on investigating what is actually going on under the hood. After seeing the wonderful Eric Chiang and Laurent Bernaille talks, and reading through the very informative posts by Lizzie Dixon and Julia Evans (that I really really recommend), I got enough information about how a container is created and managed."><meta name=author content="Michele Bertasi"><link rel=canonical href=https://blog.mbrt.dev/posts/container-network/><link href=/assets/css/stylesheet.min.29fa5c8ced467373f160c1c13ce4a1fb72b651a4b2321cd5e1b95238c68a20eb.css integrity="sha256-KfpcjO1Gc3PxYMHBPOSh+3K2UaSyMhzV4blSOMaKIOs=" rel="preload stylesheet" as=style><link rel=icon href=https://blog.mbrt.dev/favicon.ico><link rel=icon type=image/png sizes=16x16 href=https://blog.mbrt.dev/favicon-16x16.png><link rel=icon type=image/png sizes=32x32 href=https://blog.mbrt.dev/favicon-32x32.png><link rel=apple-touch-icon href=https://blog.mbrt.dev/apple-touch-icon.png><link rel=mask-icon href=https://blog.mbrt.dev/safari-pinned-tab.svg><meta name=theme-color content="#2e2e33"><meta name=msapplication-TileColor content="#2e2e33"><meta name=generator content="Hugo 0.82.0"><meta property="og:title" content="Demystifying container networking"><meta property="og:description" content="Over the last year, at work I had multiple chances to debug how containers work. Recently we had to solve some networking problems a customer had with Kubernetes, and I decided I wanted to know more. Once the problem was solved, I spent more time on investigating what is actually going on under the hood. After seeing the wonderful Eric Chiang and Laurent Bernaille talks, and reading through the very informative posts by Lizzie Dixon and Julia Evans (that I really really recommend), I got enough information about how a container is created and managed."><meta property="og:type" content="article"><meta property="og:url" content="https://blog.mbrt.dev/posts/container-network/"><meta property="article:section" content="posts"><meta property="article:published_time" content="2017-10-01T00:00:00+00:00"><meta property="article:modified_time" content="2017-10-01T00:00:00+00:00"><meta name=twitter:card content="summary"><meta name=twitter:title content="Demystifying container networking"><meta name=twitter:description content="Over the last year, at work I had multiple chances to debug how containers work. Recently we had to solve some networking problems a customer had with Kubernetes, and I decided I wanted to know more. Once the problem was solved, I spent more time on investigating what is actually going on under the hood. After seeing the wonderful Eric Chiang and Laurent Bernaille talks, and reading through the very informative posts by Lizzie Dixon and Julia Evans (that I really really recommend), I got enough information about how a container is created and managed."><script type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Posts","item":"https://blog.mbrt.dev/posts/"},{"@type":"ListItem","position":2,"name":"Demystifying container networking","item":"https://blog.mbrt.dev/posts/container-network/"}]}</script><script type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"Demystifying container networking","name":"Demystifying container networking","description":"Over the last year, at work I had multiple chances to debug how containers work. Recently we had to solve some networking problems a customer had with Kubernetes, and I decided I wanted to know more. Once the problem was solved, I spent more time on investigating what is actually going on under the hood. After seeing the wonderful Eric Chiang and Laurent Bernaille talks, and reading through the very informative posts by Lizzie Dixon and Julia Evans (that I really really recommend), I got enough information about how a container is created and managed.","keywords":["linux","containers"],"articleBody":"Over the last year, at work I had multiple chances to debug how containers work. Recently we had to solve some networking problems a customer had with Kubernetes, and I decided I wanted to know more. Once the problem was solved, I spent more time on investigating what is actually going on under the hood. After seeing the wonderful Eric Chiang and Laurent Bernaille talks, and reading through the very informative posts by Lizzie Dixon and Julia Evans (that I really really recommend), I got enough information about how a container is created and managed. I’m going to rip off and mix some stuff from their awesome posts in the first part of mine.\nWhat I missed in those talks was the networking part. How do containers talk to each other? In Bernaille’s talk there is some information, but I after seeing the video I was still not convinced completely. I was especially interested about how Calico works, and for that I could find very little information.\nTo answer this kind of questions I will try to create containers from scratch, by using just standard Linux commands. I will also setup the networking to make them happily communicate, again from scratch. I like this approach because it gets low level enough to demystify things that look very complicated, while it’s just a matter of spending some time to understand the basics.\nThis post is an extended version of a talk I gave internally at my company, trying to shed some light on the subject.\nPrerequisites for a good understanding are some basic networking and Linux concepts:\n the OSI model, and in particular level 2 and 3; IP networking and the CIDR notation; NAT (Network Address Translation).  I will link the advanced topics as the post unfolds.\nContainers from scratch Rise your hand if you ever tried the magic of Docker at least once. You pull an image from the Internet, you run it and you are projected inside another OS, with different libraries and applications installed, and all of that in no time. But how magic is a container after all? Is it composed by very complicated tools? Is it a sort of virtual machine? In the first part of this post I’m going to create a container from scratch, by using only a Linux shell and standard Linux commands, to try to answer these questions.\nPrepare the image When you do a docker pull you are downloading a container image from the Internet. This image at its core is basically just a root filesystem. You can safely ignore the fact that it’s composed by multiple stacked layers, because the end result is just a root filesystem.\nSo we can try to make our own, and for this post I decided to go with Alpine Linux, because it’s small and it’s different from my distribution.1 Needless to say that for this to work you have to be running on Linux and with a fairly recent Kernel. I haven’t checked the specific requirements, but if you updated your system in the last 5 years,2 you’re probably good to go.\nBe powerful, be root. You’ll save yourself a lot of sudo invocations and annoying “permission denied” messages:\nsudo su Download the mini root filesystem from the Alpine website and put it somewhere. Then extract it:\nmkdir rootfs cd rootfs tar xf ../alpine-minirootfs-3.6.2-x86_64.tar.gz if you look there, you’ll see the root filesystem:\n[root@mike-dell rootfs]# ls -l total 64 drwxr-xr-x 2 root root 4096 Aug 13 16:22 bin drwxr-xr-x 4 root root 4096 Jun 17 11:46 dev drwxr-xr-x 15 root root 4096 Aug 13 16:26 etc drwxr-xr-x 2 root root 4096 Jun 17 11:46 home drwxr-xr-x 5 root root 4096 Aug 13 16:22 lib drwxr-xr-x 5 root root 4096 Jun 17 11:46 media drwxr-xr-x 2 root root 4096 Jun 17 11:46 mnt dr-xr-xr-x 2 root root 4096 Jun 17 11:46 proc drwx------ 2 root root 4096 Aug 13 16:08 root drwxr-xr-x 2 root root 4096 Jun 17 11:46 run drwxr-xr-x 2 root root 4096 Jun 17 11:46 sbin drwxr-xr-x 2 root root 4096 Jun 17 11:46 srv drwxr-xr-x 2 root root 4096 Jun 17 11:46 sys drwxrwxrwt 2 root root 4096 Jun 17 11:46 tmp drwxr-xr-x 7 root root 4096 Jun 17 11:46 usr drwxr-xr-x 13 root root 4096 Aug 13 16:22 var chroot Now let’s try to chroot there. In this way we create a process and change its root directory to the one we just created:\nchroot rootfs /bin/ash export PATH=/bin:/usr/bin:/sbin This will execute a shell inside the chroot environment. Side note: exporting a new $PATH (the second command) is wise, because otherwise you’d be carrying your host $PATH in the chroot, and this might not be correct there. So where are we exactly?\n/ # cat /etc/os-release NAME=\"Alpine Linux\" ID=alpine VERSION_ID=3.6.2 PRETTY_NAME=\"Alpine Linux v3.6\" HOME_URL=\"http://alpinelinux.org\" BUG_REPORT_URL=\"http://bugs.alpinelinux.org\" Yes, in Alpine Linux. And you can’t reach your host files anymore, because your root directory is now the one we just chroot-ed into.\nLet’s now install some useful packages. They’ll come in handy for later:\napk add --no-cache python findmnt curl libcap bind-tools Another thing we have to fix now is the /proc filesystem. If you look there you’ll see that it’s empty so any utility like ps won’t work:\nmount -t proc proc /proc Now a question for you: Is this actually a container?\nSort-of, but the isolation is pretty poor. Take a look at ps aux from the “container”:\n/ # ps aux PID USER TIME COMMAND 1 root 0:03 {systemd} /sbin/init 2 root 0:00 [kthreadd] 3 root 0:00 [kworker/0:0] 4 root 0:00 [kworker/0:0H] 6 root 0:00 [mm_percpu_wq] 7 root 0:00 [ksoftirqd/0] 8 root 0:01 [rcu_preempt] 9 root 0:00 [rcu_sched] 10 root 0:00 [rcu_bh] 11 root 0:00 [migration/0] 12 root 0:00 [watchdog/0] 13 root 0:00 [cpuhp/0] 14 root 0:00 [cpuhp/1] 15 root 0:00 [watchdog/1] 16 root 0:00 [migration/1] 17 root 0:00 [ksoftirqd/1] 19 root 0:00 [kworker/1:0H] ... 2816 1170 0:00 top oops… I can see all the processes of my host from here. An I can actually kill them:\nkillall top Not only that. Look at the network:\n/ # ip link 1: lo:  mtu 65536 qdisc noqueue state UNKNOWN qlen 1000 link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 3: wlan0:  mtu 1500 qdisc fq_codel state UP qlen 1000 link/ether 40:49:0f:fe:c3:05 brd ff:ff:ff:ff:ff:ff You can see my WiFi card for example. I could change the IP, take it down, etc. Not nice. The answer is then NO, this is not a container, because it’s not isolated enough. This is just a process in a different root filesystem.\nNamespaces Linux has namespaces to the rescue. As man 7 namespaces says:\n A namespace wraps a global system resource in an abstraction that makes it appear to the processes within the namespace that they have their own isolated instance of the global resource. Changes to the global resource are visible to other processes that are members of the namespace, but are invisible to other processes. One use of namespaces is to implement containers.\n or in other words: we take a resource like the list of processes in the machine, we make an isolated copy of it, give it to our process and make sure that any change there is not reflected to the root process list. This is the PID namespace. Is it hard to set up? Judge by yourself:\nunshare -p -f chroot rootfs /usr/bin/env -i \\ HOME=/root \\ PATH=/bin:/usr/bin:/sbin:/usr/sbin \\ /bin/ash -l With this command from the host, we create a new process (the chroot we used before) but we put it in a new PID namespace by prepending the unshare -p invocation. This command is nothing fancy, just a handy wrapper around the unshare Linux system call. The env command executed after the chroot makes sure that the environment is correctly filled, avoiding us to repeat the export command every time.\nLet’s take a look at the list of processes now, after we mount /proc again:\n/ # mount -t proc proc /proc / # ps PID USER TIME COMMAND 1 root 0:00 /bin/ash 5 root 0:00 ps Oh yes. Now our shell is actually PID 1. How weird is that? And yes, you won’t be able to kill any host process.\nFrom the host you can instead see the containerized process:\n[root@mike-dell micheleb]# ps aux |grep /ash root 8552 0.0 0.0 1540 952 pts/3 S+ 20:06 0:00 /bin/ash and kill it if you want to.\nThe PID is not the only namespace you can create, as you can imagine. The network for example is still the host one:\n/bin # ip link 1: lo:  mtu 65536 qdisc noqueue state UNKNOWN qlen 1000 link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 3: wlan0:  mtu 1500 qdisc fq_codel state UP qlen 1000 link/ether 40:49:0f:fe:c3:05 brd ff:ff:ff:ff:ff:ff Let’s isolate it then. It’s just a matter of adding some flags to unshare:\nunshare -pmn -f chroot rootfs /usr/bin/env -i \\ HOME=/root \\ PATH=/bin:/usr/bin:/sbin:/usr/sbin \\ /bin/ash -l here we are isolating the PID, mount and network namespaces, all at once. And here is the result:\n# / ip addr 1: lo:  mtu 65536 qdisc noop state DOWN qlen 1000 link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 # / ping -c1 8.8.8.8 PING 8.8.8.8 (8.8.8.8): 56 data bytes ping: sendto: Network unreachable Pretty isolated I would say. Topic of the next section will be how to open a little hole in this isolation and get some containers to communicate somehow.\nBefore to move on I’d like to put a little disclaimer here. Even though I’m done with this section, it doesn’t mean that with an unshare command you get a fully secure container. Don’t go to your boss and say that you want to toss Docker and use shell scripts because it’s the same thing.\nWhat our container is still missing is, for example, resource isolation. We could crash the machine by creating a lot of processes, or slow it down by allocating a lot of memory. For this you need to use cgroups.3 Then there’s the problem you are still root inside the container, You are limited but you are still pretty powerful. You could for example change the system clock, reboot the machine, and other scary things. To control them you’d need to drop some capabilities.4 I won’t dig into these concepts in this post, because they don’t affect the networking. All of that involves just simple Linux system calls and some magic in the /proc and /sys/fs/cgroup/ filesystems.\nI point you though to the excellent resources I linked at the beginning, especially Eric Chiang and Lizzie Dixon, if you are more curious. I could also write another post on that in the future.\nI hope I nevertheless convinced you that a container is nothing more than a highly configured Linux process. No virtualization and no crazy stuff is going on here. You could create a container today with just a plain Linux machine, by calling a bunch of Linux syscalls.\nNetworking from scratch Goal of this section will be to break the isolation we put our container in, and make it communicate with:\n a container in the same host; a container in another host; the Internet.  I’m running this experiment in a three nodes cluster. The nodes communicate through a private network under 10.141/16. The head node has two network interfaces, so it’s able to communicate with both the external and the internal network. The other two nodes have only one network interface and they can reach the external network by using the head node as gateway. The following schema should clarify the situation:\nCommunicate within the host Right now our container is completely isolated. Let’s try to at least ping the same host:\n/# ping 10.141.0.1 PING 10.141.0.1 (10.141.0.1): 56 data bytes ping: sendto: Network unreachable It’s not working, so the network is isolated. No matter what you do you won’t be able to reach the outside, because the only interface you have there is the loopback (and it’s also down).\n/# ip link 1: lo:  mtu 65536 qdisc noop state DOWN qlen 1000 link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 If you create another container on the same host, you can imagine they’re not going to be able to communicate either.\nHow do we solve this problem? We use a veth pair, which stands for Virtual Ethernet pair. As the name suggests, a veth pair is a pair of virtual interfaces, that act as an Ethernet cable. Whatever comes into one end, goes to the other. Sounds useful? Yes, because we can move one end of the pair inside the container, and keep the other end in the host. So we are basically piercing a hole in the container to slide our little virtual wire in.\nIn another shell, same host, let’s setup a $CPID variable to help us remember what is the container PID:5\nCPID=$(ps -C ash -o pid= | tr -d ' ') Let’s create the veth pair with iproute,6 move one end into the container and bring the host end up:\nip link add veth0 type veth peer name veth1 ip link set veth1 netns $CPID ip link set dev veth0 up If you take a look at the interfaces in the container now, you’ll see something like:\n/# ip l 1: lo:  mtu 65536 qdisc noop state DOWN qlen 1000 link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00 3: veth1@if4:  mtu 1500 qdisc noop state DOWN qlen 1000 link/ether 8e:7f:62:52:76:71 brd ff:ff:ff:ff:ff:ff Cool! Everything is down, but we have a new interface. Let’s also rename it to something less scary, like eth0. You’ll feel more home in the container:\nip link set dev veth1 name eth0 address 8e:7f:62:52:76:71 where the address used is the MAC address shown by ip link, or ip addr show dev veth1.7\nNow let’s step back for a second. We have a container with this “cable” pointing out. What kind of IP should we give to the container? What kind of connectivity do we want to provide? The way we are going to set it up is the default Docker way: bridge networking. Containers on the same host live on the same network, but different than the host one. This means that we have to setup a virtual network where containers are able to talk to each other at level 2. This also means that we won’t consume any physical IP address from the host network.\nI choose the 172.19.35/24 subnet for the containers, since it doesn’t conflict with the cluster private network (10.141/16).8 This means that I have space for 2^8 - 2 = 30 containers in this machine.9\nNow let’s give the container an IP and bring it up, along with the loopback interface:\nip addr add dev eth0 172.19.35.2/24 ip link set eth0 up ip link set lo up And this is the current situation:\nNow we want do to the very same thing with another container. So let’s create it from the same root filesystem:\nunshare -pmn -f chroot rootfs /usr/bin/env -i \\ HOME=/root \\ PATH=/bin:/usr/bin:/sbin:/usr/sbin \\ /bin/ash -l mount -t proc proc /proc Then in the host we setup another $CPID2 variable with the PID of this new container,10 and then create another veth pair:\nip link add veth2 type veth peer name veth3 ip link set veth3 netns $CPID2 ip link set dev veth2 up Then rename the interface in the container, give it an IP and bring it up as before:\nip link set dev lo up MAC=$(ip addr show dev veth3 | grep 'link/ether' | tr -s ' ' | cut -d' ' -f3) ip link set dev veth3 name eth0 address $MAC ip addr add dev eth0 172.19.35.3/24 ip link set eth0 up Note that I’m using another IP address in the 172.19.35/24 subnet. This is the situation right now:\nWhat we need to do here is try to link those two veth pairs together, in a way that they can communicate at layer 2. Something like… a bridge! It will take care of linking together the two network segments. It works at level 2 like a switch (so it basically “talks Ethernet”), by “enslaving” existing interfaces. You add a bunch of interfaces into a bridge, and they will be communicating with each other thanks to the bridge.\nLet’s create the bridge and put the two veth interfaces in it:\nip link add br0 type bridge ip link set veth0 master br0 ip link set veth2 master br0 Now let’s give the bridge an IP and bring it up:\nip addr add dev br0 172.19.35.1/24 ip link set br0 up Now we have this topology in place:\nAs you can see, now the containers can ping each other:\n/ # ping 172.19.35.3 -c1 PING 172.19.35.3 (172.19.35.3): 56 data bytes 64 bytes from 172.19.35.3: seq=0 ttl=64 time=0.046 ms --- 172.19.35.3 ping statistics --- 1 packets transmitted, 1 packets received, 0% packet loss round-trip min/avg/max = 0.046/0.046/0.046 ms Let’s check the ARP table11 on the first container:\n/ # ip neigh 172.19.35.3 dev eth0 lladdr c6:b3:e3:1d:97:7b used 40/35/10 probes 1 STALE So this means that these two containers are on the same network, and can talk to each other at level 2. And here is indeed the ARP request going through:\n[root@node001 ~]# tcpdump -i any host 172.19.35.3 22:55:37.858611 ARP, Request who-has 172.19.35.3 tell 172.19.35.2, length 28 22:55:37.858639 ARP, Reply 172.19.35.3 is-at c6:b3:e3:1d:97:7b (oui Unknown), length 28 Reach the internet If you try to reach the external network, or even the host IP, you’ll see that it’s still not working. That’s because to reach a different network you need some kind of level 3 communication. The way Docker sets it up by default is with natting.12 In this way, the 172.19.35/24 network will be invisible outside the host and mapped automatically into the host IP address, that in my case is 10.141.0.1 (which by the way is still a private IP, and will be natted by the head node into the public IP).\nLet’s first enable IP forwarding, to allow the host to perform routing operations:\necho 1  /proc/sys/net/ipv4/ip_forward Then insert a NAT rule (also called IP masquerade) in the external interface:\niptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE Then you need to set the default route in the container:\nip route add default via 172.19.35.1 In this way any packet with a destination on a different network will be sent through the gateway, which is the bridge. From there it will be natted by eth0, our physical interface, and then sent through the cluster fabric by using the physical IP as source.\nThis is now the situation:\nIf I ping Google’s DNS from the container, I see this from the host:\n[root@node001 ~]# tcpdump -i any host 8.8.8.8 -n 23:27:51.234333 IP 172.19.35.2  8.8.8.8: ICMP echo request, id 13824, seq 0, length 64 23:27:51.234360 IP 10.141.0.1  8.8.8.8: ICMP echo request, id 13824, seq 0, length 64 23:27:51.242230 IP 8.8.8.8  10.141.0.1: ICMP echo reply, id 13824, seq 0, length 64 23:27:51.242251 IP 8.8.8.8  172.19.35.2: ICMP echo reply, id 13824, seq 0, length 64 As you can see the packet comes from the container, is translated into the host IP (10.141.0.1) and then when it comes back, the destination is replaced with the container IP (172.19.35.2).\nThis is what I see from the head node, instead:\n[root@head ~]# tcpdump -i any host 8.8.8.8 -n 23:25:20.209922 IP 10.141.0.1  8.8.8.8: ICMP echo request, id 13568, seq 0, length 64 23:25:20.209943 IP 192.168.200.172  8.8.8.8: ICMP echo request, id 13568, seq 0, length 64 23:25:20.217286 IP 8.8.8.8  192.168.200.172: ICMP echo reply, id 13568, seq 0, length 64 23:25:20.217310 IP 8.8.8.8  10.141.0.1: ICMP echo reply, id 13568, seq 0, length 64 As you can see the packet comes from the node, it’s forwarded through the head node public IP (192.168.200.172), and then comes back the other way around. NAT is also working here.\nReach a remote container Now from a container we are able to communicate with both another local container and with the externa network. The next step is to reach a container in another node, in the same physical private network (the 10.141/16 network the nodes sit in).\nThis is basically the plan:\nThe two nodes communicate through the physical private network 10.141/16. We want to assign a subnet to each node, so each will be able to host some containers. We have already assigned the 172.19.35/24 network to the first host. We can then assign another to the second, for example 172.19.36/24. I could have chosen any other IP range that doesn’t conflict with the existing networks, but this one is especially handy, because both of them are part of a bigger 172.19/16 network. We can think of it as the containers' network, in which every host gets a slice (a /24 subnet). This means that we can assign 24 - 16 = 8 bits to different hosts, so maximum 255 nodes. Of course you can use different network sizes to accomodate your needs, but that’s the way we are going to set it up here. NAT has been already setup in the first host, so we are going to do the same for the second one, and then add routing rules (layer 3) between the two hosts.\nLet’s go real quick over the second host, create a container, setup the networking there as we did for the first host:\nunshare -pmn -f chroot rootfs /usr/bin/env -i \\ HOME=/root \\ PATH=/bin:/usr/bin:/sbin:/usr/sbin \\ /bin/ash -l then in the host:\nCPID=$(ps -C ash -o pid= | tr -d ' ') ip link add veth0 type veth peer name veth1 ip link set veth1 netns $CPID ip link set dev veth0 up ip link add br0 type bridge ip link set veth0 master br0 ip addr add dev br0 172.19.36.1/24 ip link set br0 up echo 1  /proc/sys/net/ipv4/ip_forward iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE Note that I used the 172.19.36.1/24 IP for the bridge. Then in the container:\nip link set dev lo up MAC=$(ip addr show dev veth1 | grep 'link/ether' | tr -s ' ' | cut -d' ' -f3) ip link set dev veth1 name eth0 address $MAC ip addr add dev eth0 172.19.36.2/24 ip link set eth0 up ip route add default via 172.19.36.1 and again I use 172.19.36/24 here. Now the container is able to talk to the Internet, as the other one. But, is the first container able to reach this new container?\nTry to think about it.\nThen try to do it. No, it doesn’t work, but why? The answer is in the routing table of the first host:\n[root@node001 ~]# ip r default via 10.141.255.254 dev eth0 10.141.0.0/16 dev eth0 proto kernel scope link src 10.141.0.1 172.19.35.0/24 dev br0 proto kernel scope link src 172.19.35.1 There is a default gateway pointing to the head node, and two “scope link” ranges, for networks reachable at level 2 (unsurprisingly there are the 10.141/16 physical network, and the 172.19.35/24 network for the local containers). As you can see there’s no rule for 172.19.36/24. This means the packet will go through the default gateway, and from there it will try to go outside, because the head node doesn’t know anything about this IP either.\nWhat we should do is add a routing rule to the node table, telling that any packet for 172.19.36/24 should be forwarded to the second host, listening at 10.141.0.2:\nip route add 172.19.36.0/24 via 10.141.0.2 src 10.141.0.1 The same goes for the other host, but in reverse:\nip route add 172.19.35.0/24 via 10.141.0.1 src 10.141.0.2 And now, both containers are able to talk to each other. If you want to show something fancy, you could run NGINX in one container, and curl the beautiful default page from the other.\nHooray!\nBonus: Calico What I showed in the last section is basically how Docker sets up its bridge networking. The routing rules to make the containers see each other come from me. What Docker Swarm and other networking solutions for Docker use instead is usually overlay networking, like VXLAN. VXLAN encapsulate layer 2 Ethernet frames within layer 3 UDP packets. This provides layer 2 visibility to containers across hosts. I didn’t show this approach because the routing rules were simpler, and also because I prefer the Calico approach, that I will present in this section.\nSome of you may already know Kubernetes. It’s the most popular (any my favorite) container orchestrator. What it basically does is providing declarative APIs to manage containers. Restarts upon failures, replicas' scaling, upgrading, ingress, and many other things can be managed automatically by Kubernetes. For all this magic to happen, Kubernetes imposes some restrictions on the underlying infrastructure. Here is the section about the networking model:\n all containers can communicate with all other containers without NAT all nodes can communicate with all containers (and vice-versa) without NAT the IP that a container sees itself as is the same IP that others see it as.  As the documentation says:\n Coordinating ports across multiple developers is very difficult to do at scale and exposes users to cluster-level issues outside of their control. Dynamic port allocation brings a lot of complications to the system - every application has to take ports as flags, the API servers have to know how to insert dynamic port numbers into configuration blocks, services have to know how to find each other, etc. Rather than deal with this, Kubernetes takes a different approach.\n The solution we used in the previous section does not satisfy these requirements. In our case the source IP is rewritten by NAT, so the destination container sees only the host IP.\nThere are a number of projects that satisfy the Kubernetes requirements, and among them I really like Project Calico, so I’m going to reproduce its setup here, again the hard way, just Linux commands.\nThe Calico’s solution is to use layer 3 networking all the way up to the containers. No Docker bridges, no NAT, just pure routing rules and iptables. Interestingly enough, the way Calico distributes the routing rules is through BGP,13 which is the same way the Internet works.\nThe end result we’re going to aim at is this:\nLooks familiar? Yes, it’s almost the same as the one I used in the previous section. We’re going to use the same IP ranges: the host networking under 10.141/16, and we’re going to setup a 172.19/16 network for the containers. As before, every host gets a /24 subnet. The difference is in the way the packets are routed. With Calico everything goes at layer 3, so on the wire you’ll see packets coming from a 172.19/16 address and going to a 172.19/16 address because, as I said before, no natting or overlays are used.\nSetup the host network Without further ado, let’s create our container on the first host:\nunshare -pmn -f chroot rootfs /usr/bin/env -i \\ HOME=/root \\ PATH=/bin:/usr/bin:/sbin:/usr/sbin \\ /bin/ash -l Then, let’s create our veth pair, and move one end into the container:\nCPID=$(ps -C ash -o pid= | tr -d ' ') ip link add veth0 type veth peer name veth1 ip link set veth1 netns $CPID ip link set dev veth0 up Let’s now give the container an IP address:\nip link set dev lo up MAC=$(ip addr show dev veth1 | grep 'link/ether' | tr -s ' ' | cut -d' ' -f3) ip link set dev veth1 name eth0 address $MAC ip addr add dev eth0 172.19.35.2/32 ip link set eth0 up Have you noted anything strange? I’m using a /32 address for the container IP. This means that whenever I send a packet, even for a container living on the same host, it will need to go through level 3. This allows to get rid of the bridge, and also makes sure that the container doesn’t try (and fail) to reach another at level 2, by sending useless ARP requests.\nNow on the host we need to enable ARP proxy for the veth interface.\necho 1  /proc/sys/net/ipv4/conf/veth0/rp_filter echo 1  /proc/sys/net/ipv4/conf/veth0/route_localnet echo 1 /proc/sys/net/ipv4/conf/veth0/proxy_arp echo 0 /proc/sys/net/ipv4/neigh/veth0/proxy_delay echo 1 /proc/sys/net/ipv4/conf/veth0/forwarding What this does is basically replying to ARP requests with its own MAC address. In this way, when the container looks for the link local address, veth0 will say: “it’s me!”, replying with it’s own MAC address, and the packet will be sent there at layer 2.14\nWe also need to enable IP forwarding on the host’s physical interface, to allow routing:\necho 1 /proc/sys/net/ipv4/conf/eth0/forwarding And inside the container we have to add a couple of routing rules:\nip r add 169.254.1.1 dev eth0 scope link ip r add default via 169.254.1.1 dev eth0 Here we use a local link address, so we don’t have to manage the IP of the other pair of the veth. We can assign the same address to all the veths, since the address is valid only within the link, so no routing will be performed by the kernel. We’ve also added a default route, that says to use that IP for any address outside of the local range. But since our local range is a /32, no IP is local. So, what we are saying to the kernel in the end is: “any time we want to reach something outside the container, just put it on the eth0 link”. It seems convoluted, but the idea behind it is quite simple.\nLast bit missing on the host is the rule to reach the container from the host:\nip r add 172.19.35.2 dev veth0 scope link With this we’re saying that, to reach the container, the packet has to go through the veth0 interface.\nNow, from the container we’re able to ping the host:\nnode001:/# ping 10.141.0.1 -c1 PING 10.141.0.1 (10.141.0.1): 56 data bytes 64 bytes from 10.141.0.1: seq=0 ttl=64 time=0.077 ms --- 10.141.0.1 ping statistics --- 1 packets transmitted, 1 packets received, 0% packet loss round-trip min/avg/max = 0.077/0.077/0.077 ms And this is the traffic passing:\n[root@node001 ~]# tcpdump -i any host 172.19.35.2 -n 16:25:10.439980 IP 172.19.35.2  10.141.0.1: ICMP echo request, id 6144, seq 0, length 64 16:25:10.440014 IP 10.141.0.1  172.19.35.2: ICMP echo reply, id 6144, seq 0, length 64 ARP goes back and forth to determine the physical address of the local link IP:\n[root@node001 ~]# tcpdump -i any host 172.19.35.2 16:25:15.453847 ARP, Request who-has 169.254.1.1 tell 172.19.35.2, length 28 16:25:15.453882 ARP, Reply 169.254.1.1 is-at f6:5c:53:b4:f8:03 (oui Unknown), length 28 and if you look at the ARP table you’ll see the cached reply:\nnode001:/# ip neigh 169.254.1.1 dev eth0 lladdr f6:5c:53:b4:f8:03 ref 1 used 2/2/2 probes 4 REACHABLE The 169.254.1.1 IP is the only one reachable at level 2 from the container, as expected. The MAC address corresponds to the other end of the veth pair, as you can see from the host:\n[root@node001 ~]# ip l show dev veth0 5: veth0@if4:  mtu 1500 qdisc pfifo_fast state UP mode DEFAULT qlen 1000 link/ether f6:5c:53:b4:f8:03 brd ff:ff:ff:ff:ff:ff link-netnsid 0 And this is the current situation:\nAnother detail is the blackhole route, to drop packets coming for unexisting containers:\nip r add blackhole 172.19.35.0/24 In this way any packet sent to the host subnet to an IP not present in the host will be dropped. Packets for exising containers still work, because their routing rules are more specific, so they take precedence:\n[root@node001 ~]# ip r default via 10.141.255.254 dev eth0 10.141.0.0/16 dev eth0 proto kernel scope link src 10.141.0.1 169.254.0.0/16 dev eth0 scope link metric 1002 blackhole 172.19.35.0/24 172.19.35.2 dev veth0 scope link In this case, if you send a packet to 172.19.35.2, it will go to veth0. If you instead try to reach 172.19.35.3, it will go to the blackhole and dropped, instead of going to the default gateway.\nReach a remote container To reach a container running on another host, you have to replicate the setup done for this host. You have to assign to that node another /24 subnet from the container network, and use one IP from that subnet to create a container (I used the 172.19.36/24 subnet, the same as Part 2).15\nThen you need to add the routing rules to direct the traffic to the right host. From the first host:\nip route add 172.19.36.0/24 via 10.141.0.2 src 10.141.0.1 and similarly from the second host:\nip route add 172.19.35.0/24 via 10.141.0.1 src 10.141.0.2 Done. Now the containers can reach each other. If you look at the traffic, you’ll see that the source and destination IPs are preserved, and not NATted, satisfying the Kubernetes' requirements:\n[root@node001 ~]# tcpdump -i any host 172.19.35.2 20:08:02.154031 IP 172.19.35.2  172.19.36.2: ICMP echo request, id 17152, seq 0, length 64 20:08:02.154045 IP 172.19.35.2  172.19.36.2: ICMP echo request, id 17152, seq 0, length 64 20:08:02.155088 IP 172.19.36.2  172.19.35.2: ICMP echo reply, id 17152, seq 0, length 64 20:08:02.155098 IP 172.19.36.2  172.19.35.2: ICMP echo reply, id 17152, seq 0, length 64 Success!\nReach the Internet If you are lucky you are able to reach the external network already. This all depends on how NAT is setup in your cluster. A proper setup should allow only packets coming from the physical network to escape.\nFrom my head node (that is also the default gateway of the other nodes), I see:\n[root@mbrt-c-08-13-t-c7u2 ~]# iptables -L -t nat Chain PREROUTING (policy ACCEPT) target prot opt source destination Chain INPUT (policy ACCEPT) target prot opt source destination Chain OUTPUT (policy ACCEPT) target prot opt source destination Chain POSTROUTING (policy ACCEPT) target prot opt source destination MASQUERADE all -- 10.141.0.0/16 anywhere This is precisely my case. Only packets coming from the 10.141/16 network, will be natted. To perform NAT also for packets coming from the containers network, I have to add another rule:\niptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE -s 172.19.0.0/16 Looking this way in the table:\nMASQUERADE all -- 172.19.0.0/16 anywhere Then we need a routing rule in the head node, telling it where it can find the 172.19.35/24 subnet:\nip route add 172.19.35.0/24 via 10.141.0.1 src 10.141.255.254 And now, you can finally ping the outside network from the container!\nMissing pieces Among the feature that I haven’t discussed, Calico has a really nice distributed firewall, applied through iptables, but I left it out of scope from this post.\nBonus: Debug container networking In this section I would like to digress a bit and talk about debugging. I hope it’s clear at this point that containers aren’t magical, and networking isn’t magical either. This means that for debugging you can use all the regular tools Linux provides. You don’t need to rely on Docker or Calico to provide anything on their end, and even if they would, how do you debug them when they are broken? In the previous section I used ping, iproute and tcpdump, but what happens if your Docker image does not contain these tools?\nnode001:/# ip r /bin/ash: ip: not found This happens many times, and even worse if your Docker image looks like this:\nFROMscratch ADD main / CMD [\"/main\"] You don’t even have a console there. What do you do?\nEnter the nsenter magical world There is a very simple trick you should probably remember: nsenter. This command enters one or more namespaces from the host. You can enter all of them and in that case you would have another console open on the container (similar to the docker exec command):\nnsenter --pid=/proc/$CPID/ns/pid \\ --net=/proc/$CPID/ns/net \\ --mount=/proc/$CPID/ns/mnt \\ /bin/bash and look, we see the same processes as the container do:\n[root@node001 rootfs]# mount -t proc proc /proc [root@node001 rootfs]# ps aux USER PID %CPU %MEM VSZ RSS TTY STAT START TIME COMMAND root 1 0.0 0.0 1540 548 pts/0 S+ 16:19 0:00 /bin/ash -l root 97 0.0 0.2 116144 2908 pts/1 S 20:25 0:00 /bin/bash root 127 0.0 0.1 139492 1620 pts/1 R+ 20:28 0:00 ps aux What’s most important for our purposes is accessing the network namespace though:\nnsenter --net=/proc/$CPID/ns/net /bin/bash this way you have the same network as the container, but no other restrictions. In particular you have access to the host filesystem:\n[root@node001 ~]# cat /etc/os-release NAME=\"CentOS Linux\" VERSION=\"7 (Core)\" ID=\"centos\" ID_LIKE=\"rhel fedora\" VERSION_ID=\"7\" PRETTY_NAME=\"CentOS Linux 7 (Core)\" ... and all your favorite tools available. But the network you see is the container one:\n[root@node001 ~]# ip r default via 169.254.1.1 dev eth0 169.254.1.1 dev eth0 scope link This, of course works with Docker too. Once you have the PID of your container, you can nsenter it:\n[root@node001 ~]# docker inspect --format '{{.State.Pid}}' my-awesome-container 24028 [root@node001 ~]# nsenter --net=/proc/24028/ns/net /bin/bash So, please, don’t install debugging tools in your Docker images anymore. It’s not really necessary.\nConcluding remarks With this long post I tried to reproduce two different solutions for container networking, with nothing more than Linux commands. Docker, Calico, Flannel and the others are all nice tools, but they aren’t magical. They build on top of standard Linux functionality, and trying to reproduce their behavior helped me (and I hope you too) to understand them better.\nKeep in mind that this is not a complete guide. There are many more interesting topics, like network policies and security in general, then a universe of different solutions, like overlay networks, Ipvlan, macvlan, MacVTap, IPsec, and I don’t know how many others. For containers in general there are many other things you want to isolate, like physical resources and capabilities, as I mentioned during the first part of this post. The overwhelming amount of technical terms shouldn’t discourage you to explore and expand your knowledge. You might find, like me, that it’s not as hard as it seems.\nThat’s all folks. Happy debugging!\nFootnotes   I run my laptop with Arch Linux and I used CentOS 7 for my demo cluster. ↩︎\n Too bad CentOS 6 users! ↩︎\n Again, man 7 cgroups is your friend. ↩︎\n I might be boring: man 7 capabilities. ↩︎\n This snippet assumes your machine is running only one ash command. ↩︎\n man ip. If you’re not familiar with it, today you have a good change to get started , because ifconfig has been long deprecated. ↩︎\n Handy if you want to get it from a script, as a quick hack:\nMAC=$(ip addr show dev veth1 | grep 'link/ether' | tr -s ' ' | cut -d' ' -f3)  ↩︎ Note that I’m using private IPv4 address spaces. ↩︎\n 24 bits are fixed by the network mask so I have only 8 bits to assign to hosts, but 172.19.35.0 is the network address, and 172.19.35.255 is the broadcast, so they aren’t usable. ↩︎\n A possibility would be to find it with ps aux, or if you’re lazy you could temporarily run a recognizable process and query it’s parent process from the host. I’m using top here:\nCPID2=$(ps -C ash -o ppid= | tr -d ' ')  ↩︎ The Address Resolution Protocol is responsible for translating IP addresses into MAC addresses. Every time a network device wants to communicate with an IP in the same subnet, the ARP protocol kicks in. It basically sends a broadcast packet asking to everybody: “how has this IP?”, and it saves the answer (IP address, MAC address) into a table. This way every time you need to reach that IP, you know already which MAC address to contact. ↩︎\n Network Address Translation. This is the same mechanism your home router uses to connect you to the Internet. It basically maps all the internal network IPs into the only one that is externally available, and assigned to you by your ISP. Externally, only the router IP will be visible. So, when a packet is sent outside, the source address is rewritten to match the router external IP. When the reply comes back, the natting does the reverse, and replaces the destination address with the original source of the packet. ↩︎\n See also the Calico data path for some details. ↩︎\n Some nice comments are present in the Calico source code about it. See intdataplane/endpoint_mgr.go:\n// Enable strict reverse-path filtering. This prevents a workload from spoofing its // IP address. Non-privileged containers have additional anti-spoofing protection // but VM workloads, for example, can easily spoof their IP. err := m.writeProcSys(fmt.Sprintf(\"/proc/sys/net/ipv4/conf/%s/rp_filter\", name), \"1\") if err != nil { return err } // Enable routing to localhost. This is required to allow for NAT to the local // host. err = m.writeProcSys(fmt.Sprintf(\"/proc/sys/net/ipv4/conf/%s/route_localnet\", name), \"1\") if err != nil { return err } // Enable proxy ARP, this makes the host respond to all ARP requests with its own // MAC. This has a couple of advantages: // // - In OpenStack, we're forced to configure the guest's networking using DHCP. // Since DHCP requires a subnet and gateway, representing the Calico network // in the natural way would lose a lot of IP addresses. For IPv4, we'd have to // advertise a distinct /30 to each guest, which would use up 4 IPs per guest. // Using proxy ARP, we can advertise the whole pool to each guest as its subnet // but have the host respond to all ARP requests and route all the traffic whether // it is on or off subnet. // // - For containers, we install explicit routes into the containers network // namespace and we use a link-local address for the gateway. Turing on proxy ARP // means that we don't need to assign the link local address explicitly to each // host side of the veth, which is one fewer thing to maintain and one fewer // thing we may clash over. err = m.writeProcSys(fmt.Sprintf(\"/proc/sys/net/ipv4/conf/%s/proxy_arp\", name), \"1\") if err != nil { return err } // Normally, the kernel has a delay before responding to proxy ARP but we know // that's not needed in a Calico network so we disable it. err = m.writeProcSys(fmt.Sprintf(\"/proc/sys/net/ipv4/neigh/%s/proxy_delay\", name), \"0\") if err != nil { return err } // Enable IP forwarding of packets coming _from_ this interface. For packets to // be forwarded in both directions we need this flag to be set on the fabric-facing // interface too (or for the global default to be set). err = m.writeProcSys(fmt.Sprintf(\"/proc/sys/net/ipv4/conf/%s/forwarding\", name), \"1\") if err != nil { return err }  ↩︎ For the lazy reader I reported the whole sequence here. Create the container:\nunshare -pmn -f chroot rootfs /usr/bin/env -i \\ HOME=/root \\ PATH=/bin:/usr/bin:/sbin:/usr/sbin \\ /bin/ash -l Then from the host:\nCPID=$(ps -C ash -o pid= | tr -d ' ') ip link add veth0 type veth peer name veth1 ip link set veth1 netns $CPID ip link set dev veth0 up echo 1  /proc/sys/net/ipv4/conf/veth0/rp_filter echo 1  /proc/sys/net/ipv4/conf/veth0/route_localnet echo 1 /proc/sys/net/ipv4/conf/veth0/proxy_arp echo 0 /proc/sys/net/ipv4/neigh/veth0/proxy_delay echo 1 /proc/sys/net/ipv4/conf/veth0/forwarding echo 1 /proc/sys/net/ipv4/conf/eth0/forwarding ip r add 172.19.36.2 dev veth0 scope link ip r add blackhole 172.19.36.0/24 and from the container:\nip link set dev lo up MAC=$(ip addr show dev veth1 | grep 'link/ether' | tr -s ' ' | cut -d' ' -f3) ip link set dev veth1 name eth0 address $MAC ip addr add dev eth0 172.19.36.2/32 ip link set eth0 up ip r add 169.254.1.1 dev eth0 scope link ip r add default via 169.254.1.1 dev eth0  ↩︎   ","wordCount":"7186","inLanguage":"en","datePublished":"2017-10-01T00:00:00Z","dateModified":"2017-10-01T00:00:00Z","author":{"@type":"Person","name":"Michele Bertasi"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://blog.mbrt.dev/posts/container-network/"},"publisher":{"@type":"Organization","name":"mbrt blog","logo":{"@type":"ImageObject","url":"https://blog.mbrt.dev/favicon.ico"}}}</script></head><body id=top><script>localStorage.getItem("pref-theme")==="dark"?document.body.classList.add('dark'):localStorage.getItem("pref-theme")==="light"?document.body.classList.remove('dark'):window.matchMedia('(prefers-color-scheme: dark)').matches&&document.body.classList.add('dark')</script><noscript><style type=text/css>#theme-toggle,.top-link{display:none}</style><style>@media(prefers-color-scheme:dark){:root{--theme:#1d1e20;--entry:#2e2e33;--primary:rgba(255, 255, 255, 0.84);--secondary:rgba(255, 255, 255, 0.56);--tertiary:rgba(255, 255, 255, 0.16);--content:rgba(255, 255, 255, 0.74);--hljs-bg:#2e2e33;--code-bg:#37383e;--border:#333}.list{background:var(--theme)}.list:not(.dark)::-webkit-scrollbar-track{background:0 0}.list:not(.dark)::-webkit-scrollbar-thumb{border-color:var(--theme)}}</style></noscript><header class=header><nav class=nav><div class=logo><a href=https://blog.mbrt.dev/ accesskey=h title="mbrt blog (Alt + H)">mbrt blog</a>
+<span class=logo-switches><button id=theme-toggle accesskey=t title="(Alt + T)"><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></span></div><ul id=menu onscroll=menu_on_scroll()><li><a href=https://blog.mbrt.dev/archives/ title=Archive><span>Archive</span></a></li><li><a href=https://blog.mbrt.dev/search/ title="Search (Alt + /)" accesskey=/><span>Search</span></a></li><li><a href=https://blog.mbrt.dev/tags/ title=Tags><span>Tags</span></a></li></ul></nav></header><main class=main><article class=post-single><header class=post-header><div class=breadcrumbs><a href=https://blog.mbrt.dev/>Home</a>&nbsp;»&nbsp;<a href=https://blog.mbrt.dev/posts/>Posts</a></div><h1 class=post-title>Demystifying container networking</h1><div class=post-meta>October 1, 2017&nbsp;·&nbsp;34 min&nbsp;·&nbsp;Michele Bertasi</div></header><div class=toc><details><summary accesskey=c title="(Alt + C)"><div class=details>Table of Contents</div></summary><div class=inner><ul><li><a href=#containers-from-scratch aria-label="Containers from scratch">Containers from scratch</a><ul><li><a href=#prepare-the-image aria-label="Prepare the image">Prepare the image</a></li><li><a href=#chroot aria-label=chroot>chroot</a></li><li><a href=#namespaces aria-label=Namespaces>Namespaces</a></li></ul></li><li><a href=#networking-from-scratch aria-label="Networking from scratch">Networking from scratch</a><ul><li><a href=#communicate-within-the-host aria-label="Communicate within the host">Communicate within the host</a></li><li><a href=#reach-the-internet aria-label="Reach the internet">Reach the internet</a></li><li><a href=#reach-a-remote-container aria-label="Reach a remote container">Reach a remote container</a></li></ul></li><li><a href=#bonus-calico aria-label="Bonus: Calico">Bonus: Calico</a><ul><li><a href=#setup-the-host-network aria-label="Setup the host network">Setup the host network</a></li><li><a href=#reach-a-remote-container-1 aria-label="Reach a remote container">Reach a remote container</a></li><li><a href=#reach-the-internet-1 aria-label="Reach the Internet">Reach the Internet</a></li><li><a href=#missing-pieces aria-label="Missing pieces">Missing pieces</a></li></ul></li><li><a href=#bonus-debug-container-networking aria-label="Bonus: Debug container networking">Bonus: Debug container networking</a><ul><li><a href=#enter-the-nsenter-magical-world aria-label="Enter the nsenter magical world">Enter the <code>nsenter</code> magical world</a></li></ul></li><li><a href=#concluding-remarks aria-label="Concluding remarks">Concluding remarks</a></li><li><a href=#footnotes aria-label=Footnotes>Footnotes</a></li></ul></div></details></div><div class=post-content><p>Over the last year, at work I had multiple chances to debug how containers work.
+Recently we had to solve some networking problems a customer had with
+<a href=https://kubernetes.io/>Kubernetes</a>, and I decided I wanted to know more. Once
+the problem was solved, I spent more time on investigating what is actually
+going on under the hood. After seeing the wonderful
+<a href=https://youtu.be/wyqoi52k5jM>Eric Chiang</a> and
+<a href=https://youtu.be/b3XDl0YsVsg>Laurent Bernaille</a> talks, and reading through
+the very informative posts by
+<a href=https://blog.lizzie.io/linux-containers-in-500-loc.html>Lizzie Dixon</a> and
+<a href=http://jvns.ca/blog/2016/10/10/what-even-is-a-container/>Julia Evans</a>
+(that I really really recommend), I got enough information about how a
+container is created and managed. I&rsquo;m going to rip off and mix some stuff from
+their awesome posts in the first part of mine.</p><p>What I missed in those talks was the networking part. How do containers talk to
+each other? In Bernaille&rsquo;s talk there is some information, but I after seeing
+the video I was still not convinced completely. I was especially interested
+about how <a href=https://www.projectcalico.org/>Calico</a> works, and for that I could
+find very little information.</p><p>To answer this kind of questions I will try to create containers from scratch,
+by using just standard Linux commands. I will also setup the networking to make
+them happily communicate, again from scratch. I like this approach because it
+gets low level enough to demystify things that look very complicated, while it&rsquo;s
+just a matter of spending some time to understand the basics.</p><p>This post is an extended version of a talk I gave internally at my company,
+trying to shed some light on the subject.</p><p>Prerequisites for a good understanding are some basic networking and Linux
+concepts:</p><ul><li>the <a href=https://en.wikipedia.org/wiki/OSI_model>OSI model</a>, and in particular
+level 2 and 3;</li><li>IP networking and the <a href=https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing#CIDR_notation>CIDR
+notation</a>;</li><li>NAT (<a href=https://en.wikipedia.org/wiki/Network_address_translation>Network Address
+Translation</a>).</li></ul><p>I will link the advanced topics as the post unfolds.</p><h2 id=containers-from-scratch>Containers from scratch<a hidden class=anchor aria-hidden=true href=#containers-from-scratch>#</a></h2><p>Rise your hand if you ever tried the magic of <a href=https://www.docker.com/>Docker</a>
+at least once. You pull an image from the Internet, you run it and you are
+projected inside another OS, with different libraries and applications
+installed, and all of that in no time. But how magic is a container after all?
+Is it composed by very complicated tools? Is it a sort of virtual machine? In
+the first part of this post I&rsquo;m going to create a container from scratch, by
+using only a Linux shell and standard Linux commands, to try to answer these
+questions.</p><h3 id=prepare-the-image>Prepare the image<a hidden class=anchor aria-hidden=true href=#prepare-the-image>#</a></h3><p>When you do a <code>docker pull</code> you are downloading a container image from the
+Internet. This image at its core is basically just a root filesystem. You can
+safely ignore the fact that it&rsquo;s composed by multiple stacked layers, because
+the end result is just a root filesystem.</p><p>So we can try to make our own, and for this post I decided to go with <a href=https://alpinelinux.org/>Alpine
+Linux</a>, because it&rsquo;s small and it&rsquo;s different from my
+distribution.<sup id=fnref:1><a href=#fn:1 class=footnote-ref role=doc-noteref>1</a></sup>
+Needless to say that for this to work you have to be running on Linux and with a
+fairly recent Kernel. I haven&rsquo;t checked the specific requirements, but if you
+updated your system in the last 5 years,<sup id=fnref:2><a href=#fn:2 class=footnote-ref role=doc-noteref>2</a></sup> you&rsquo;re probably good to go.</p><p>Be powerful, be root. You&rsquo;ll save yourself a lot of <code>sudo</code> invocations and
+annoying &ldquo;permission denied&rdquo; messages:</p><pre><code>sudo su
+</code></pre><p>Download the mini root filesystem from the Alpine website and put it somewhere.
+Then extract it:</p><pre><code>mkdir rootfs
+cd rootfs
+tar xf ../alpine-minirootfs-3.6.2-x86_64.tar.gz
+</code></pre><p>if you look there, you&rsquo;ll see the root filesystem:</p><pre><code>[root@mike-dell rootfs]# ls -l
+total 64
+drwxr-xr-x  2 root root 4096 Aug 13 16:22 bin
+drwxr-xr-x  4 root root 4096 Jun 17 11:46 dev
+drwxr-xr-x 15 root root 4096 Aug 13 16:26 etc
+drwxr-xr-x  2 root root 4096 Jun 17 11:46 home
+drwxr-xr-x  5 root root 4096 Aug 13 16:22 lib
+drwxr-xr-x  5 root root 4096 Jun 17 11:46 media
+drwxr-xr-x  2 root root 4096 Jun 17 11:46 mnt
+dr-xr-xr-x  2 root root 4096 Jun 17 11:46 proc
+drwx------  2 root root 4096 Aug 13 16:08 root
+drwxr-xr-x  2 root root 4096 Jun 17 11:46 run
+drwxr-xr-x  2 root root 4096 Jun 17 11:46 sbin
+drwxr-xr-x  2 root root 4096 Jun 17 11:46 srv
+drwxr-xr-x  2 root root 4096 Jun 17 11:46 sys
+drwxrwxrwt  2 root root 4096 Jun 17 11:46 tmp
+drwxr-xr-x  7 root root 4096 Jun 17 11:46 usr
+drwxr-xr-x 13 root root 4096 Aug 13 16:22 var
+</code></pre><h3 id=chroot>chroot<a hidden class=anchor aria-hidden=true href=#chroot>#</a></h3><p>Now let&rsquo;s try to <code>chroot</code> there. In this way we create a process and change its
+root directory to the one we just created:</p><pre><code>chroot rootfs /bin/ash
+export PATH=/bin:/usr/bin:/sbin
+</code></pre><p>This will execute a shell inside the chroot environment. Side note: exporting a
+new <code>$PATH</code> (the second command) is wise, because otherwise you&rsquo;d be carrying
+your host <code>$PATH</code> in the chroot, and this might not be correct there. So where
+are we exactly?</p><pre><code>/ # cat /etc/os-release
+NAME=&quot;Alpine Linux&quot;
+ID=alpine
+VERSION_ID=3.6.2
+PRETTY_NAME=&quot;Alpine Linux v3.6&quot;
+HOME_URL=&quot;http://alpinelinux.org&quot;
+BUG_REPORT_URL=&quot;http://bugs.alpinelinux.org&quot;
+</code></pre><p>Yes, in Alpine Linux. And you can&rsquo;t reach your host files anymore, because your
+root directory is now the one we just chroot-ed into.</p><p>Let&rsquo;s now install some useful packages. They&rsquo;ll come in handy for later:</p><pre><code>apk add --no-cache python findmnt curl libcap bind-tools
+</code></pre><p>Another thing we have to fix now is the <code>/proc</code> filesystem. If you look there
+you&rsquo;ll see that it&rsquo;s empty so any utility like <code>ps</code> won&rsquo;t work:</p><pre><code>mount -t proc proc /proc
+</code></pre><p>Now a question for you: Is this actually a container?</p><p>Sort-of, but the isolation is pretty poor. Take a look at <code>ps aux</code> from the
+&ldquo;container&rdquo;:</p><pre><code>/ # ps aux
+PID   USER     TIME   COMMAND
+    1 root       0:03 {systemd} /sbin/init
+    2 root       0:00 [kthreadd]
+    3 root       0:00 [kworker/0:0]
+    4 root       0:00 [kworker/0:0H]
+    6 root       0:00 [mm_percpu_wq]
+    7 root       0:00 [ksoftirqd/0]
+    8 root       0:01 [rcu_preempt]
+    9 root       0:00 [rcu_sched]
+    10 root       0:00 [rcu_bh]
+    11 root       0:00 [migration/0]
+    12 root       0:00 [watchdog/0]
+    13 root       0:00 [cpuhp/0]
+    14 root       0:00 [cpuhp/1]
+    15 root       0:00 [watchdog/1]
+    16 root       0:00 [migration/1]
+    17 root       0:00 [ksoftirqd/1]
+    19 root       0:00 [kworker/1:0H]
+    ...
+    2816 1170       0:00 top
+</code></pre><p>oops&mldr; I can see all the processes of my host from here. An I can actually kill
+them:</p><pre><code>killall top
+</code></pre><p>Not only that. Look at the network:</p><pre><code>/ # ip link
+1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+3: wlan0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP qlen 1000
+    link/ether 40:49:0f:fe:c3:05 brd ff:ff:ff:ff:ff:ff
+</code></pre><p>You can see my WiFi card for example. I could change the IP, take it down, etc.
+Not nice. The answer is then NO, this is not a container, because it&rsquo;s not
+isolated enough. This is just a process in a different root filesystem.</p><h3 id=namespaces>Namespaces<a hidden class=anchor aria-hidden=true href=#namespaces>#</a></h3><p>Linux has namespaces to the rescue. As <code>man 7 namespaces</code> says:</p><blockquote><p>A namespace wraps a global system resource in an abstraction that makes it
+appear to the processes within the namespace that they have their own isolated
+instance of the global resource. Changes to the global resource are visible to
+other processes that are members of the namespace, but are invisible to other
+processes. One use of namespaces is to implement containers.</p></blockquote><p>or in other words: we take a resource like the list of processes in the machine,
+we make an isolated copy of it, give it to our process and make sure that any
+change there is not reflected to the root process list. This is the PID
+namespace. Is it hard to set up? Judge by yourself:</p><pre><code>unshare -p -f chroot rootfs /usr/bin/env -i \
+    HOME=/root \
+    PATH=/bin:/usr/bin:/sbin:/usr/sbin \
+    /bin/ash -l
+</code></pre><p>With this command from the host, we create a new process (the <code>chroot</code> we used
+before) but we put it in a new PID namespace by prepending the <code>unshare -p</code>
+invocation. This command is nothing fancy, just a handy wrapper around the
+<code>unshare</code> Linux system call. The <code>env</code> command executed after the <code>chroot</code> makes
+sure that the environment is correctly filled, avoiding us to repeat the
+<code>export</code> command every time.</p><p>Let&rsquo;s take a look at the list of processes now, after we mount <code>/proc</code> again:</p><pre><code>/ # mount -t proc proc /proc
+/ # ps
+PID   USER     TIME   COMMAND
+    1 root       0:00 /bin/ash
+    5 root       0:00 ps
+</code></pre><p>Oh yes. Now our shell is actually PID 1. How weird is that? And yes, you won&rsquo;t
+be able to kill any host process.</p><p>From the host you can instead see the containerized process:</p><pre><code>[root@mike-dell micheleb]# ps aux |grep /ash
+root      8552  0.0  0.0   1540   952 pts/3    S+   20:06   0:00 /bin/ash
+</code></pre><p>and kill it if you want to.</p><p>The PID is not the only namespace you can create, as you can imagine. The
+network for example is still the host one:</p><pre><code>/bin # ip link
+1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+3: wlan0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP qlen 1000
+    link/ether 40:49:0f:fe:c3:05 brd ff:ff:ff:ff:ff:ff
+</code></pre><p>Let&rsquo;s isolate it then. It&rsquo;s just a matter of adding some flags to <code>unshare</code>:</p><pre><code>unshare -pmn -f chroot rootfs /usr/bin/env -i \
+    HOME=/root \
+    PATH=/bin:/usr/bin:/sbin:/usr/sbin \
+    /bin/ash -l
+</code></pre><p>here we are isolating the PID, mount and network namespaces, all at once. And
+here is the result:</p><pre><code># / ip addr
+1: lo: &lt;LOOPBACK&gt; mtu 65536 qdisc noop state DOWN qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+# / ping -c1 8.8.8.8
+PING 8.8.8.8 (8.8.8.8): 56 data bytes
+ping: sendto: Network unreachable
+</code></pre><p>Pretty isolated I would say. Topic of the next section will be how to open a
+little hole in this isolation and get some containers to communicate somehow.</p><p>Before to move on I&rsquo;d like to put a little disclaimer here. Even though I&rsquo;m done
+with this section, it doesn&rsquo;t mean that with an <code>unshare</code> command you get a
+fully secure container. Don&rsquo;t go to your boss and say that you want to toss
+Docker and use shell scripts because it&rsquo;s the same thing.</p><p>What our container is still missing is, for example, resource isolation. We
+could crash the machine by creating a lot of processes, or slow it down by
+allocating a lot of memory. For this you need to use <code>cgroups</code>.<sup id=fnref:3><a href=#fn:3 class=footnote-ref role=doc-noteref>3</a></sup>
+Then there&rsquo;s the problem you
+are still root inside the container, You are limited but you are still pretty
+powerful. You could for example change the system clock, reboot the machine, and
+other scary things. To control them you&rsquo;d need to drop some capabilities.<sup id=fnref:4><a href=#fn:4 class=footnote-ref role=doc-noteref>4</a></sup>
+I won&rsquo;t dig into these
+concepts in this post, because they don&rsquo;t affect the networking. All of that
+involves just simple Linux system calls and some magic in the <code>/proc</code> and
+<code>/sys/fs/cgroup/</code> filesystems.</p><p>I point you though to the excellent resources I linked at the beginning,
+especially <a href=https://youtu.be/wyqoi52k5jM>Eric Chiang</a> and <a href=https://blog.lizzie.io/linux-containers-in-500-loc.html>Lizzie
+Dixon</a>, if you are more
+curious. I could also write another post on that in the future.</p><p>I hope I nevertheless convinced you that a container is nothing more than a
+highly configured Linux process. No virtualization and no crazy stuff is going
+on here. You could create a container today with just a plain Linux machine, by
+calling a bunch of Linux syscalls.</p><h2 id=networking-from-scratch>Networking from scratch<a hidden class=anchor aria-hidden=true href=#networking-from-scratch>#</a></h2><p>Goal of this section will be to break the isolation we put our container in, and
+make it communicate with:</p><ul><li>a container in the same host;</li><li>a container in another host;</li><li>the Internet.</li></ul><p>I&rsquo;m running this experiment in a three nodes cluster. The nodes communicate
+through a private network under 10.141/16. The head node has two network
+interfaces, so it&rsquo;s able to communicate with both the external and the internal
+network. The other two nodes have only one network interface and they can reach
+the external network by using the head node as gateway. The following schema
+should clarify the situation:</p><p><img loading=lazy src=physical.svg alt=img></p><h3 id=communicate-within-the-host>Communicate within the host<a hidden class=anchor aria-hidden=true href=#communicate-within-the-host>#</a></h3><p>Right now our container is completely isolated. Let&rsquo;s try to at least ping the
+same host:</p><pre><code>/# ping 10.141.0.1
+PING 10.141.0.1 (10.141.0.1): 56 data bytes
+ping: sendto: Network unreachable
+</code></pre><p>It&rsquo;s not working, so the network is isolated. No matter what you do you won&rsquo;t be
+able to reach the outside, because the only interface you have there is the
+loopback (and it&rsquo;s also down).</p><pre><code>/# ip link
+1: lo: &lt;LOOPBACK&gt; mtu 65536 qdisc noop state DOWN qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+</code></pre><p>If you create another container on the same host, you can imagine they&rsquo;re not
+going to be able to communicate either.</p><p>How do we solve this problem? We use a veth pair, which stands for Virtual
+Ethernet pair. As the name suggests, a veth pair is a pair of virtual
+interfaces, that act as an Ethernet cable. Whatever comes into one end, goes to
+the other. Sounds useful? Yes, because we can move one end of the pair inside
+the container, and keep the other end in the host. So we are basically piercing
+a hole in the container to slide our little virtual wire in.</p><p>In another shell, same host, let&rsquo;s setup a <code>$CPID</code> variable to help us remember
+what is the container PID:<sup id=fnref:5><a href=#fn:5 class=footnote-ref role=doc-noteref>5</a></sup></p><pre><code>CPID=$(ps -C ash -o pid= | tr -d ' ')
+</code></pre><p>Let&rsquo;s create the veth pair with <code>iproute</code>,<sup id=fnref:6><a href=#fn:6 class=footnote-ref role=doc-noteref>6</a></sup>
+move one end into the container and bring the host end up:</p><pre><code>ip link add veth0 type veth peer name veth1
+ip link set veth1 netns $CPID
+ip link set dev veth0 up
+</code></pre><p>If you take a look at the interfaces in the container now, you&rsquo;ll see something
+like:</p><pre><code>/# ip l
+1: lo: &lt;LOOPBACK&gt; mtu 65536 qdisc noop state DOWN qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+3: veth1@if4: &lt;BROADCAST,MULTICAST,M-DOWN&gt; mtu 1500 qdisc noop state DOWN qlen 1000
+    link/ether 8e:7f:62:52:76:71 brd ff:ff:ff:ff:ff:ff
+</code></pre><p>Cool! Everything is down, but we have a new interface. Let&rsquo;s also rename it to
+something less scary, like <code>eth0</code>. You&rsquo;ll feel more home in the container:</p><pre><code>ip link set dev veth1 name eth0 address 8e:7f:62:52:76:71
+</code></pre><p>where the address used is the MAC address shown by <code>ip link</code>, or <code>ip addr show dev veth1</code>.<sup id=fnref:7><a href=#fn:7 class=footnote-ref role=doc-noteref>7</a></sup></p><p>Now let&rsquo;s step back for a second. We have a container with this &ldquo;cable&rdquo; pointing
+out. What kind of IP should we give to the container? What kind of connectivity
+do we want to provide? The way we are going to set it up is the default Docker
+way: bridge networking. Containers on the same host live on the same network,
+but different than the host one. This means that we have to setup a virtual
+network where containers are able to talk to each other at <a href=https://en.wikipedia.org/wiki/Data_link_layer>level
+2</a>. This also means that we won&rsquo;t
+consume any physical IP address from the host network.</p><p>I choose the 172.19.35/24 subnet for the containers, since it doesn&rsquo;t conflict
+with the cluster private network (10.141/16).<sup id=fnref:8><a href=#fn:8 class=footnote-ref role=doc-noteref>8</a></sup>
+This means that I have space for <code>2^8 - 2 = 30</code>
+containers in this machine.<sup id=fnref:9><a href=#fn:9 class=footnote-ref role=doc-noteref>9</a></sup></p><p>Now let&rsquo;s give the container an IP and bring it up, along with the loopback
+interface:</p><pre><code>ip addr add dev eth0 172.19.35.2/24
+ip link set eth0 up
+ip link set lo up
+</code></pre><p>And this is the current situation:</p><p><img loading=lazy src=detail-veth.svg alt=img></p><p>Now we want do to the very same thing with another container. So let&rsquo;s create it
+from the same root filesystem:</p><pre><code>unshare -pmn -f chroot rootfs /usr/bin/env -i \
+    HOME=/root \
+    PATH=/bin:/usr/bin:/sbin:/usr/sbin \
+    /bin/ash -l
+mount -t proc proc /proc
+</code></pre><p>Then in the host we setup another <code>$CPID2</code> variable with the PID of this new
+container,<sup id=fnref:10><a href=#fn:10 class=footnote-ref role=doc-noteref>10</a></sup> and then create another veth pair:</p><pre><code>ip link add veth2 type veth peer name veth3
+ip link set veth3 netns $CPID2
+ip link set dev veth2 up
+</code></pre><p>Then rename the interface in the container, give it an IP and bring it up as
+before:</p><pre><code>ip link set dev lo up
+MAC=$(ip addr show dev veth3 | grep 'link/ether' | tr -s ' ' | cut -d' ' -f3)
+ip link set dev veth3 name eth0 address $MAC
+ip addr add dev eth0 172.19.35.3/24
+ip link set eth0 up
+</code></pre><p>Note that I&rsquo;m using another IP address in the 172.19.35/24 subnet. This is the
+situation right now:</p><p><img loading=lazy src=detail-second-container.svg alt=img></p><p>What we need to do here is try to link those two veth pairs together, in a way
+that they can communicate at layer 2. Something like… a
+<a href=https://wiki.archlinux.org/index.php/Network_bridge>bridge</a>! It will take care
+of linking together the two network segments. It works at level 2 like a switch
+(so it basically &ldquo;talks Ethernet&rdquo;), by &ldquo;enslaving&rdquo; existing interfaces. You add
+a bunch of interfaces into a bridge, and they will be communicating with each
+other thanks to the bridge.</p><p>Let&rsquo;s create the bridge and put the two veth interfaces in it:</p><pre><code>ip link add br0 type bridge
+ip link set veth0 master br0
+ip link set veth2 master br0
+</code></pre><p>Now let&rsquo;s give the bridge an IP and bring it up:</p><pre><code>ip addr add dev br0 172.19.35.1/24
+ip link set br0 up
+</code></pre><p>Now we have this topology in place:</p><p><img loading=lazy src=detail-bridge.svg alt=img></p><p>As you can see, now the containers can ping each other:</p><pre><code>/ # ping 172.19.35.3 -c1
+PING 172.19.35.3 (172.19.35.3): 56 data bytes
+64 bytes from 172.19.35.3: seq=0 ttl=64 time=0.046 ms
+
+--- 172.19.35.3 ping statistics ---
+1 packets transmitted, 1 packets received, 0% packet loss
+round-trip min/avg/max = 0.046/0.046/0.046 ms
+</code></pre><p>Let&rsquo;s check the ARP table<sup id=fnref:11><a href=#fn:11 class=footnote-ref role=doc-noteref>11</a></sup> on the first container:</p><pre><code>/ # ip neigh
+172.19.35.3 dev eth0 lladdr c6:b3:e3:1d:97:7b used 40/35/10 probes 1 STALE
+</code></pre><p>So this means that these two containers are on the same network, and can talk to
+each other at level 2. And here is indeed the ARP request going through:</p><pre><code>[root@node001 ~]# tcpdump -i any host 172.19.35.3
+22:55:37.858611 ARP, Request who-has 172.19.35.3 tell 172.19.35.2, length 28
+22:55:37.858639 ARP, Reply 172.19.35.3 is-at c6:b3:e3:1d:97:7b (oui Unknown), length 28
+</code></pre><h3 id=reach-the-internet>Reach the internet<a hidden class=anchor aria-hidden=true href=#reach-the-internet>#</a></h3><p>If you try to reach the external network, or even the host IP, you&rsquo;ll see that
+it&rsquo;s still not working. That&rsquo;s because to reach a different network you need
+some kind of level 3 communication. The way Docker sets it up by default is with
+natting.<sup id=fnref:12><a href=#fn:12 class=footnote-ref role=doc-noteref>12</a></sup> In this
+way, the 172.19.35/24 network will be invisible outside the host and mapped
+automatically into the host IP address, that in my case is 10.141.0.1 (which by
+the way is still a private IP, and will be natted by the head node into the
+public IP).</p><p>Let&rsquo;s first enable IP forwarding, to allow the host to perform routing
+operations:</p><pre><code>echo 1 &gt; /proc/sys/net/ipv4/ip_forward
+</code></pre><p>Then insert a NAT rule (also called IP masquerade) in the external interface:</p><pre><code>iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+</code></pre><p>Then you need to set the default route in the container:</p><pre><code>ip route add default via 172.19.35.1
+</code></pre><p>In this way any packet with a destination on a different network will be sent
+through the gateway, which is the bridge. From there it will be natted by eth0,
+our physical interface, and then sent through the cluster fabric by using the
+physical IP as source.</p><p>This is now the situation:</p><p><img loading=lazy src=detail-final.svg alt=img></p><p>If I ping Google&rsquo;s DNS from the container, I see this from the host:</p><pre><code>[root@node001 ~]# tcpdump -i any host 8.8.8.8 -n
+23:27:51.234333 IP 172.19.35.2 &gt; 8.8.8.8: ICMP echo request, id 13824, seq 0, length 64
+23:27:51.234360 IP 10.141.0.1 &gt; 8.8.8.8: ICMP echo request, id 13824, seq 0, length 64
+23:27:51.242230 IP 8.8.8.8 &gt; 10.141.0.1: ICMP echo reply, id 13824, seq 0, length 64
+23:27:51.242251 IP 8.8.8.8 &gt; 172.19.35.2: ICMP echo reply, id 13824, seq 0, length 64
+</code></pre><p>As you can see the packet comes from the container, is translated into the host
+IP (10.141.0.1) and then when it comes back, the destination is replaced with
+the container IP (172.19.35.2).</p><p>This is what I see from the head node, instead:</p><pre><code>[root@head ~]# tcpdump -i any host 8.8.8.8 -n
+23:25:20.209922 IP 10.141.0.1 &gt; 8.8.8.8: ICMP echo request, id 13568, seq 0, length 64
+23:25:20.209943 IP 192.168.200.172 &gt; 8.8.8.8: ICMP echo request, id 13568, seq 0, length 64
+23:25:20.217286 IP 8.8.8.8 &gt; 192.168.200.172: ICMP echo reply, id 13568, seq 0, length 64
+23:25:20.217310 IP 8.8.8.8 &gt; 10.141.0.1: ICMP echo reply, id 13568, seq 0, length 64
+</code></pre><p>As you can see the packet comes from the node, it&rsquo;s forwarded through the head
+node public IP (192.168.200.172), and then comes back the other way around. NAT
+is also working here.</p><h3 id=reach-a-remote-container>Reach a remote container<a hidden class=anchor aria-hidden=true href=#reach-a-remote-container>#</a></h3><p>Now from a container we are able to communicate with both another local
+container and with the externa network. The next step is to reach a container in
+another node, in the same physical private network (the 10.141/16 network the
+nodes sit in).</p><p>This is basically the plan:</p><p><img loading=lazy src=general.svg alt=img></p><p>The two nodes communicate through the physical private network 10.141/16. We
+want to assign a subnet to each node, so each will be able to host some
+containers. We have already assigned the 172.19.35/24 network to the first host.
+We can then assign another to the second, for example 172.19.36/24. I could have
+chosen any other IP range that doesn&rsquo;t conflict with the existing networks, but
+this one is especially handy, because both of them are part of a bigger
+172.19/16 network. We can think of it as the containers' network, in which every
+host gets a slice (a /24 subnet). This means that we can assign <code>24 - 16 = 8</code>
+bits to different hosts, so maximum 255 nodes. Of course you can use different
+network sizes to accomodate your needs, but that&rsquo;s the way we are going to set
+it up here. NAT has been already setup in the first host, so we are going to do
+the same for the second one, and then add routing rules (layer 3) between the
+two hosts.</p><p>Let&rsquo;s go real quick over the second host, create a container, setup the
+networking there as we did for the first host:</p><pre><code>unshare -pmn -f chroot rootfs /usr/bin/env -i \
+    HOME=/root \
+    PATH=/bin:/usr/bin:/sbin:/usr/sbin \
+    /bin/ash -l
+</code></pre><p>then in the host:</p><pre><code>CPID=$(ps -C ash -o pid= | tr -d ' ')
+ip link add veth0 type veth peer name veth1
+ip link set veth1 netns $CPID
+ip link set dev veth0 up
+ip link add br0 type bridge
+ip link set veth0 master br0
+ip addr add dev br0 172.19.36.1/24
+ip link set br0 up
+echo 1 &gt; /proc/sys/net/ipv4/ip_forward
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+</code></pre><p>Note that I used the 172.19.36.1/24 IP for the bridge. Then in the container:</p><pre><code>ip link set dev lo up
+MAC=$(ip addr show dev veth1 | grep 'link/ether' | tr -s ' ' | cut -d' ' -f3)
+ip link set dev veth1 name eth0 address $MAC
+ip addr add dev eth0 172.19.36.2/24
+ip link set eth0 up
+ip route add default via 172.19.36.1
+</code></pre><p>and again I use 172.19.36/24 here. Now the container is able to talk to the
+Internet, as the other one. But, is the first container able to reach this new
+container?</p><p>Try to think about it.</p><p>Then try to do it. No, it doesn&rsquo;t work, but why? The answer is in the routing
+table of the first host:</p><pre><code>[root@node001 ~]# ip r
+default via 10.141.255.254 dev eth0
+10.141.0.0/16 dev eth0  proto kernel  scope link  src 10.141.0.1
+172.19.35.0/24 dev br0  proto kernel  scope link  src 172.19.35.1
+</code></pre><p>There is a default gateway pointing to the head node, and two &ldquo;scope link&rdquo;
+ranges, for networks reachable at level 2 (unsurprisingly there are the
+10.141/16 physical network, and the 172.19.35/24 network for the local
+containers). As you can see there&rsquo;s no rule for 172.19.36/24. This means the
+packet will go through the default gateway, and from there it will try to go
+outside, because the head node doesn&rsquo;t know anything about this IP either.</p><p>What we should do is add a routing rule to the node table, telling that any
+packet for 172.19.36/24 should be forwarded to the second host, listening at
+10.141.0.2:</p><pre><code>ip route add 172.19.36.0/24 via 10.141.0.2 src 10.141.0.1
+</code></pre><p>The same goes for the other host, but in reverse:</p><pre><code>ip route add 172.19.35.0/24 via 10.141.0.1 src 10.141.0.2
+</code></pre><p>And now, both containers are able to talk to each other. If you want to show
+something fancy, you could run NGINX in one container, and <code>curl</code> the beautiful
+default page from the other.</p><p>Hooray!</p><h2 id=bonus-calico>Bonus: Calico<a hidden class=anchor aria-hidden=true href=#bonus-calico>#</a></h2><p>What I showed in the last section is basically how Docker sets up its bridge
+networking. The routing rules to make the containers see each other come from
+me. What Docker Swarm and other networking solutions for Docker use instead is
+usually overlay networking, like
+<a href=https://en.wikipedia.org/wiki/Virtual_Extensible_LAN>VXLAN</a>. VXLAN encapsulate
+layer 2 Ethernet frames within layer 3 UDP packets. This provides layer 2
+visibility to containers across hosts. I didn&rsquo;t show this approach because the
+routing rules were simpler, and also because I prefer the Calico approach, that
+I will present in this section.</p><p>Some of you may already know <a href=https://kubernetes.io/>Kubernetes</a>. It&rsquo;s the most
+popular (any my favorite) container orchestrator. What it basically does is
+providing declarative APIs to manage containers.
+<a href=https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy>Restarts</a>
+upon failures, <a href=https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/>replicas'
+scaling</a>,
+<a href=https://kubernetes.io/docs/concepts/workloads/controllers/deployment/>upgrading</a>,
+<a href=https://kubernetes.io/docs/concepts/services-networking/ingress/>ingress</a>, and
+<a href=https://kubernetes.io/docs/concepts/services-networking/network-policies/>many</a>
+<a href=https://kubernetes.io/docs/concepts/api-extension/custom-resources/>other</a>
+<a href=https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/>things</a>
+can be managed automatically by Kubernetes. For all this magic to happen,
+Kubernetes imposes some restrictions on the underlying infrastructure. Here is
+the section about the <a href=https://kubernetes.io/docs/concepts/cluster-administration/networking/#kubernetes-model>networking
+model</a>:</p><ul><li>all containers can communicate with all other containers without NAT</li><li>all nodes can communicate with all containers (and vice-versa) without NAT</li><li>the IP that a container sees itself as is the same IP that others see it as.</li></ul><p>As the documentation says:</p><blockquote><p>Coordinating ports across multiple developers is very difficult to do at scale
+and exposes users to cluster-level issues outside of their control. Dynamic
+port allocation brings a lot of complications to the system - every
+application has to take ports as flags, the API servers have to know how to
+insert dynamic port numbers into configuration blocks, services have to know
+how to find each other, etc. Rather than deal with this, Kubernetes takes a
+different approach.</p></blockquote><p>The solution we used in the previous section does not satisfy these
+requirements. In our case the source IP is rewritten by NAT, so the destination
+container sees only the host IP.</p><p>There are a number of projects that satisfy the Kubernetes requirements, and
+among them I really like <a href=https://www.projectcalico.org//>Project Calico</a>, so
+I&rsquo;m going to reproduce its setup here, again the hard way, just Linux commands.</p><p>The Calico&rsquo;s solution is to use layer 3 networking all the way up to the
+containers. No Docker bridges, no NAT, just pure routing rules and iptables.
+Interestingly enough, the way Calico distributes the routing rules is through
+<a href=https://en.wikipedia.org/wiki/Border_Gateway_Protocol>BGP</a>,<sup id=fnref:13><a href=#fn:13 class=footnote-ref role=doc-noteref>13</a></sup>
+which is the same way the Internet works.</p><p>The end result we&rsquo;re going to aim at is this:</p><p><img loading=lazy src=general-calico.svg alt=img></p><p>Looks familiar? Yes, it&rsquo;s almost the same as the one I used in the previous
+section. We&rsquo;re going to use the same IP ranges: the host networking under
+10.141/16, and we&rsquo;re going to setup a 172.19/16 network for the containers. As
+before, every host gets a /24 subnet. The difference is in the way the packets
+are routed. With Calico everything goes at layer 3, so on the wire you&rsquo;ll see
+packets coming from a 172.19/16 address and going to a 172.19/16 address
+because, as I said before, no natting or overlays are used.</p><h3 id=setup-the-host-network>Setup the host network<a hidden class=anchor aria-hidden=true href=#setup-the-host-network>#</a></h3><p>Without further ado, let&rsquo;s create our container on the first host:</p><pre><code>unshare -pmn -f chroot rootfs /usr/bin/env -i \
+    HOME=/root \
+    PATH=/bin:/usr/bin:/sbin:/usr/sbin \
+    /bin/ash -l
+</code></pre><p>Then, let&rsquo;s create our veth pair, and move one end into the container:</p><pre><code>CPID=$(ps -C ash -o pid= | tr -d ' ')
+ip link add veth0 type veth peer name veth1
+ip link set veth1 netns $CPID
+ip link set dev veth0 up
+</code></pre><p>Let&rsquo;s now give the container an IP address:</p><pre><code>ip link set dev lo up
+MAC=$(ip addr show dev veth1 | grep 'link/ether' | tr -s ' ' | cut -d' ' -f3)
+ip link set dev veth1 name eth0 address $MAC
+ip addr add dev eth0 172.19.35.2/32
+ip link set eth0 up
+</code></pre><p>Have you noted anything strange? I&rsquo;m using a /32 address for the container IP.
+This means that whenever I send a packet, even for a container living on the
+same host, it will need to go through level 3. This allows to get rid of the
+bridge, and also makes sure that the container doesn&rsquo;t try (and fail) to reach
+another at level 2, by sending useless ARP requests.</p><p>Now on the host we need to enable <a href=https://en.wikipedia.org/wiki/Proxy_ARP>ARP
+proxy</a> for the veth interface.</p><pre><code>echo 1 &gt; /proc/sys/net/ipv4/conf/veth0/rp_filter
+echo 1 &gt; /proc/sys/net/ipv4/conf/veth0/route_localnet
+echo 1 &gt;/proc/sys/net/ipv4/conf/veth0/proxy_arp
+echo 0 &gt;/proc/sys/net/ipv4/neigh/veth0/proxy_delay
+echo 1 &gt;/proc/sys/net/ipv4/conf/veth0/forwarding
+</code></pre><p>What this does is basically replying to ARP requests with its own MAC address.
+In this way, when the container looks for the link local address, veth0 will
+say: &ldquo;it&rsquo;s me!&rdquo;, replying with it&rsquo;s own MAC address, and the packet will be sent
+there at layer 2.<sup id=fnref:14><a href=#fn:14 class=footnote-ref role=doc-noteref>14</a></sup></p><p>We also need to enable IP forwarding on the host&rsquo;s physical interface, to allow
+routing:</p><pre><code>echo 1 &gt;/proc/sys/net/ipv4/conf/eth0/forwarding
+</code></pre><p>And inside the container we have to add a couple of routing rules:</p><pre><code>ip r add 169.254.1.1 dev eth0  scope link
+ip r add default via 169.254.1.1 dev eth0
+</code></pre><p>Here we use a <a href=https://tools.ietf.org/html/rfc3927>local link address</a>, so we
+don&rsquo;t have to manage the IP of the other pair of the veth. We can assign the
+same address to all the veths, since the address is valid only within the link,
+so no routing will be performed by the kernel. We&rsquo;ve also added a default route,
+that says to use that IP for any address outside of the local range. But since
+our local range is a /32, no IP is local. So, what we are saying to the kernel
+in the end is: &ldquo;any time we want to reach something outside the container, just
+put it on the eth0 link&rdquo;. It seems convoluted, but the idea behind it is quite
+simple.</p><p>Last bit missing on the host is the rule to reach the container from the host:</p><pre><code>ip r add 172.19.35.2 dev veth0 scope link
+</code></pre><p>With this we&rsquo;re saying that, to reach the container, the packet has to go
+through the veth0 interface.</p><p>Now, from the container we&rsquo;re able to ping the host:</p><pre><code>node001:/# ping 10.141.0.1 -c1
+PING 10.141.0.1 (10.141.0.1): 56 data bytes
+64 bytes from 10.141.0.1: seq=0 ttl=64 time=0.077 ms
+
+--- 10.141.0.1 ping statistics ---
+1 packets transmitted, 1 packets received, 0% packet loss
+round-trip min/avg/max = 0.077/0.077/0.077 ms
+</code></pre><p>And this is the traffic passing:</p><pre><code>[root@node001 ~]# tcpdump -i any host 172.19.35.2 -n
+16:25:10.439980 IP 172.19.35.2 &gt; 10.141.0.1: ICMP echo request, id 6144, seq 0, length 64
+16:25:10.440014 IP 10.141.0.1 &gt; 172.19.35.2: ICMP echo reply, id 6144, seq 0, length 64
+</code></pre><p>ARP goes back and forth to determine the physical address of the local link IP:</p><pre><code>[root@node001 ~]# tcpdump -i any host 172.19.35.2
+16:25:15.453847 ARP, Request who-has 169.254.1.1 tell 172.19.35.2, length 28
+16:25:15.453882 ARP, Reply 169.254.1.1 is-at f6:5c:53:b4:f8:03 (oui Unknown), length 28
+</code></pre><p>and if you look at the ARP table you&rsquo;ll see the cached reply:</p><pre><code>node001:/# ip neigh
+169.254.1.1 dev eth0 lladdr f6:5c:53:b4:f8:03 ref 1 used 2/2/2 probes 4 REACHABLE
+</code></pre><p>The 169.254.1.1 IP is the only one reachable at level 2 from the container, as
+expected. The MAC address corresponds to the other end of the veth pair, as you
+can see from the host:</p><pre><code>[root@node001 ~]# ip l show dev veth0
+5: veth0@if4: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc pfifo_fast state UP mode DEFAULT qlen 1000
+    link/ether f6:5c:53:b4:f8:03 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+</code></pre><p>And this is the current situation:</p><p><img loading=lazy src=detail-calico-final.svg alt=img></p><p>Another detail is the blackhole route, to drop packets coming for unexisting containers:</p><pre><code>ip r add blackhole 172.19.35.0/24
+</code></pre><p>In this way any packet sent to the host subnet to an IP not present in the host
+will be dropped. Packets for exising containers still work, because their
+routing rules are more specific, so they take precedence:</p><pre><code>[root@node001 ~]# ip r
+default via 10.141.255.254 dev eth0
+10.141.0.0/16 dev eth0  proto kernel  scope link  src 10.141.0.1
+169.254.0.0/16 dev eth0  scope link  metric 1002
+blackhole 172.19.35.0/24
+172.19.35.2 dev veth0  scope link
+</code></pre><p>In this case, if you send a packet to 172.19.35.2, it will go to veth0. If you
+instead try to reach 172.19.35.3, it will go to the blackhole and dropped,
+instead of going to the default gateway.</p><h3 id=reach-a-remote-container-1>Reach a remote container<a hidden class=anchor aria-hidden=true href=#reach-a-remote-container-1>#</a></h3><p>To reach a container running on another host, you have to replicate the setup
+done for this host. You have to assign to that node another /24 subnet from the
+container network, and use one IP from that subnet to create a container (I used
+the 172.19.36/24 subnet, the same as Part 2).<sup id=fnref:15><a href=#fn:15 class=footnote-ref role=doc-noteref>15</a></sup></p><p>Then you need to add the routing rules to direct the traffic to the right host.
+From the first host:</p><pre><code>ip route add 172.19.36.0/24 via 10.141.0.2 src 10.141.0.1
+</code></pre><p>and similarly from the second host:</p><pre><code>ip route add 172.19.35.0/24 via 10.141.0.1 src 10.141.0.2
+</code></pre><p>Done. Now the containers can reach each other. If you look at the traffic,
+you&rsquo;ll see that the source and destination IPs are preserved, and not NATted,
+satisfying the Kubernetes' requirements:</p><pre><code>[root@node001 ~]# tcpdump -i any host 172.19.35.2
+20:08:02.154031 IP 172.19.35.2 &gt; 172.19.36.2: ICMP echo request, id 17152, seq 0, length 64
+20:08:02.154045 IP 172.19.35.2 &gt; 172.19.36.2: ICMP echo request, id 17152, seq 0, length 64
+20:08:02.155088 IP 172.19.36.2 &gt; 172.19.35.2: ICMP echo reply, id 17152, seq 0, length 64
+20:08:02.155098 IP 172.19.36.2 &gt; 172.19.35.2: ICMP echo reply, id 17152, seq 0, length 64
+</code></pre><p>Success!</p><h3 id=reach-the-internet-1>Reach the Internet<a hidden class=anchor aria-hidden=true href=#reach-the-internet-1>#</a></h3><p>If you are lucky you are able to reach the external network already. This all
+depends on how NAT is setup in your cluster. A proper setup should allow only
+packets coming from the physical network to escape.</p><p>From my head node (that is also the default gateway of the other nodes), I see:</p><pre><code>[root@mbrt-c-08-13-t-c7u2 ~]# iptables -L -t nat
+Chain PREROUTING (policy ACCEPT)
+target     prot opt source               destination
+
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
+
+Chain POSTROUTING (policy ACCEPT)
+target     prot opt source               destination
+MASQUERADE  all  --  10.141.0.0/16        anywhere
+</code></pre><p>This is precisely my case. Only packets coming from the 10.141/16 network, will
+be natted. To perform NAT also for packets coming from the containers network, I
+have to add another rule:</p><pre><code>iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE -s 172.19.0.0/16
+</code></pre><p>Looking this way in the table:</p><pre><code>MASQUERADE  all  --  172.19.0.0/16        anywhere
+</code></pre><p>Then we need a routing rule in the head node, telling it where it can find the
+172.19.35/24 subnet:</p><pre><code>ip route add 172.19.35.0/24 via 10.141.0.1 src 10.141.255.254
+</code></pre><p>And now, you can finally ping the outside network from the container!</p><h3 id=missing-pieces>Missing pieces<a hidden class=anchor aria-hidden=true href=#missing-pieces>#</a></h3><p>Among the feature that I haven&rsquo;t discussed, Calico has a really nice distributed
+firewall, applied through iptables, but I left it out of scope from this post.</p><h2 id=bonus-debug-container-networking>Bonus: Debug container networking<a hidden class=anchor aria-hidden=true href=#bonus-debug-container-networking>#</a></h2><p>In this section I would like to digress a bit and talk about debugging. I hope
+it&rsquo;s clear at this point that containers aren&rsquo;t magical, and networking isn&rsquo;t
+magical either. This means that for debugging you can use all the regular tools
+Linux provides. You don&rsquo;t need to rely on Docker or Calico to provide anything
+on their end, and even if they would, how do you debug them when they are
+broken? In the previous section I used <code>ping</code>, <code>iproute</code> and <code>tcpdump</code>, but what
+happens if your Docker image does not contain these tools?</p><pre><code>node001:/# ip r
+/bin/ash: ip: not found
+</code></pre><p>This happens many times, and even worse if your Docker image looks like this:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-dockerfile data-lang=dockerfile><span style=color:#ff79c6>FROM</span><span style=color:#f1fa8c> scratch</span>
+<span style=color:#ff79c6>ADD</span> main /
+<span style=color:#ff79c6>CMD</span> [<span style=color:#f1fa8c>&#34;/main&#34;</span>]
+</code></pre></div><p>You don&rsquo;t even have a console there. What do you do?</p><h3 id=enter-the-nsenter-magical-world>Enter the <code>nsenter</code> magical world<a hidden class=anchor aria-hidden=true href=#enter-the-nsenter-magical-world>#</a></h3><p>There is a very simple trick you should probably remember: <code>nsenter</code>. This
+command enters one or more namespaces from the host. You can enter all of them
+and in that case you would have another console open on the container (similar
+to the <a href=https://docs.docker.com/engine/reference/commandline/exec/>docker exec</a>
+command):</p><pre><code>nsenter --pid=/proc/$CPID/ns/pid \
+        --net=/proc/$CPID/ns/net \
+        --mount=/proc/$CPID/ns/mnt \
+        /bin/bash
+</code></pre><p>and look, we see the same processes as the container do:</p><pre><code>[root@node001 rootfs]# mount -t proc proc /proc
+[root@node001 rootfs]# ps aux
+USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root         1  0.0  0.0   1540   548 pts/0    S+   16:19   0:00 /bin/ash -l
+root        97  0.0  0.2 116144  2908 pts/1    S    20:25   0:00 /bin/bash
+root       127  0.0  0.1 139492  1620 pts/1    R+   20:28   0:00 ps aux
+</code></pre><p>What&rsquo;s most important for our purposes is accessing the network namespace
+though:</p><pre><code>nsenter --net=/proc/$CPID/ns/net /bin/bash
+</code></pre><p>this way you have the same network as the container, but no other restrictions.
+In particular you have access to the host filesystem:</p><pre><code>[root@node001 ~]# cat /etc/os-release
+NAME=&quot;CentOS Linux&quot;
+VERSION=&quot;7 (Core)&quot;
+ID=&quot;centos&quot;
+ID_LIKE=&quot;rhel fedora&quot;
+VERSION_ID=&quot;7&quot;
+PRETTY_NAME=&quot;CentOS Linux 7 (Core)&quot;
+...
+</code></pre><p>and all your favorite tools available. But the network you see is the container
+one:</p><pre><code>[root@node001 ~]# ip r
+default via 169.254.1.1 dev eth0
+169.254.1.1 dev eth0  scope link
+</code></pre><p>This, of course works with Docker too. Once you have the PID of your container,
+you can <code>nsenter</code> it:</p><pre><code>[root@node001 ~]# docker inspect --format '{{.State.Pid}}' my-awesome-container
+24028
+[root@node001 ~]# nsenter --net=/proc/24028/ns/net /bin/bash
+</code></pre><p>So, please, don&rsquo;t install debugging tools in your Docker images anymore. It&rsquo;s
+not really necessary.</p><h2 id=concluding-remarks>Concluding remarks<a hidden class=anchor aria-hidden=true href=#concluding-remarks>#</a></h2><p>With this long post I tried to reproduce two different solutions for container
+networking, with nothing more than Linux commands. Docker, Calico, Flannel and
+the others are all nice tools, but they aren&rsquo;t magical. They build on top of
+standard Linux functionality, and trying to reproduce their behavior helped me
+(and I hope you too) to understand them better.</p><p>Keep in mind that this is not a complete guide. There are many more interesting
+topics, like network policies and security in general, then a universe of
+different solutions, like <a href=https://en.wikipedia.org/wiki/Overlay_network>overlay
+networks</a>,
+<a href=http://hicu.be/macvlan-vs-ipvlan>Ipvlan</a>,
+<a href=http://hicu.be/docker-networking-macvlan-vlan-configuration>macvlan</a>,
+<a href=http://virt.kernelnewbies.org/MacVTap>MacVTap</a>,
+<a href=https://en.wikipedia.org/wiki/IPsec>IPsec</a>, and I don&rsquo;t know how many others.
+For containers in general there are many other things you want to isolate, like
+physical resources and capabilities, as I mentioned during the first part of
+this post. The overwhelming amount of technical terms shouldn&rsquo;t discourage you
+to explore and expand your knowledge. You might find, like me, that it&rsquo;s not as
+hard as it seems.</p><p>That&rsquo;s all folks. Happy debugging!</p><h2 id=footnotes>Footnotes<a hidden class=anchor aria-hidden=true href=#footnotes>#</a></h2><section class=footnotes role=doc-endnotes><hr><ol><li id=fn:1 role=doc-endnote><p>I run my laptop with <a href=https://www.archlinux.org/>Arch Linux</a> and I used
+<a href=https://www.centos.org/>CentOS 7</a> for my demo cluster. <a href=#fnref:1 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:2 role=doc-endnote><p>Too bad CentOS 6 users! <a href=#fnref:2 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:3 role=doc-endnote><p>Again, <code>man 7 cgroups</code> is your friend. <a href=#fnref:3 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:4 role=doc-endnote><p>I might be boring: <code>man 7 capabilities</code>. <a href=#fnref:4 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:5 role=doc-endnote><p>This snippet assumes your machine is running only one <code>ash</code> command. <a href=#fnref:5 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:6 role=doc-endnote><p><code>man ip</code>. If you&rsquo;re not familiar
+with it, today you have a good change to get started , because <code>ifconfig</code> has
+been long deprecated. <a href=#fnref:6 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:7 role=doc-endnote><p>Handy if you want to get it from a script, as a quick hack:</p><pre><code>MAC=$(ip addr show dev veth1 | grep 'link/ether' | tr -s ' ' | cut -d' ' -f3)
+</code></pre><a href=#fnref:7 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></li><li id=fn:8 role=doc-endnote><p>Note that I&rsquo;m using
+<a href=https://en.wikipedia.org/wiki/Private_network#Private_IPv4_address_spaces>private IPv4 address spaces.</a> <a href=#fnref:8 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:9 role=doc-endnote><p>24 bits are fixed by the network
+mask so I have only 8 bits to assign to hosts, but 172.19.35.0 is the network
+address, and 172.19.35.255 is the broadcast, so they aren&rsquo;t usable. <a href=#fnref:9 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:10 role=doc-endnote><p>A possibility would be to find it
+with <code>ps aux</code>, or if you&rsquo;re lazy you could temporarily run a recognizable
+process and query it&rsquo;s parent process from the host. I&rsquo;m using <code>top</code> here:</p><pre><code>CPID2=$(ps -C ash -o ppid= | tr -d ' ')
+</code></pre><a href=#fnref:10 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></li><li id=fn:11 role=doc-endnote><p>The
+<a href=https://en.wikipedia.org/wiki/Address_Resolution_Protocol>Address Resolution Protocol</a>
+is responsible for translating IP addresses into MAC addresses. Every time a
+network device wants to communicate with an IP in the same subnet, the ARP
+protocol kicks in. It basically sends a broadcast packet asking to everybody:
+&ldquo;how has this IP?&rdquo;, and it saves the answer (IP address, MAC address) into a
+table. This way every time you need to reach that IP, you know already which MAC
+address to contact. <a href=#fnref:11 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:12 role=doc-endnote><p><a href=https://en.wikipedia.org/wiki/Network_address_translation>Network Address Translation</a>.
+This is the same mechanism your home router uses to connect you to the Internet. It
+basically maps all the internal network IPs into the only one that is externally
+available, and assigned to you by your ISP. Externally, only the router IP will
+be visible. So, when a packet is sent outside, the source address is rewritten
+to match the router external IP. When the reply comes back, the natting does the
+reverse, and replaces the destination address with the original source of the
+packet. <a href=#fnref:12 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:13 role=doc-endnote><p>See also
+<a href=https://docs.projectcalico.org/v2.5/reference/architecture/data-path>the Calico data path</a>
+for some details. <a href=#fnref:13 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:14 role=doc-endnote><p>Some nice comments are present in the Calico source code about it. See
+<code>intdataplane/endpoint_mgr.go</code>:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=color:#6272a4>// Enable strict reverse-path filtering.  This prevents a workload from spoofing its
+</span><span style=color:#6272a4>// IP address.  Non-privileged containers have additional anti-spoofing protection
+</span><span style=color:#6272a4>// but VM workloads, for example, can easily spoof their IP.
+</span><span style=color:#6272a4></span>err <span style=color:#ff79c6>:=</span> m.<span style=color:#50fa7b>writeProcSys</span>(fmt.<span style=color:#50fa7b>Sprintf</span>(<span style=color:#f1fa8c>&#34;/proc/sys/net/ipv4/conf/%s/rp_filter&#34;</span>, name), <span style=color:#f1fa8c>&#34;1&#34;</span>)
+<span style=color:#ff79c6>if</span> err <span style=color:#ff79c6>!=</span> <span style=color:#ff79c6>nil</span> {
+    <span style=color:#ff79c6>return</span> err
+}
+<span style=color:#6272a4>// Enable routing to localhost.  This is required to allow for NAT to the local
+</span><span style=color:#6272a4>// host.
+</span><span style=color:#6272a4></span>err = m.<span style=color:#50fa7b>writeProcSys</span>(fmt.<span style=color:#50fa7b>Sprintf</span>(<span style=color:#f1fa8c>&#34;/proc/sys/net/ipv4/conf/%s/route_localnet&#34;</span>, name), <span style=color:#f1fa8c>&#34;1&#34;</span>)
+<span style=color:#ff79c6>if</span> err <span style=color:#ff79c6>!=</span> <span style=color:#ff79c6>nil</span> {
+    <span style=color:#ff79c6>return</span> err
+}
+<span style=color:#6272a4>// Enable proxy ARP, this makes the host respond to all ARP requests with its own
+</span><span style=color:#6272a4>// MAC.  This has a couple of advantages:
+</span><span style=color:#6272a4>//
+</span><span style=color:#6272a4>// - In OpenStack, we&#39;re forced to configure the guest&#39;s networking using DHCP.
+</span><span style=color:#6272a4>//   Since DHCP requires a subnet and gateway, representing the Calico network
+</span><span style=color:#6272a4>//   in the natural way would lose a lot of IP addresses.  For IPv4, we&#39;d have to
+</span><span style=color:#6272a4>//   advertise a distinct /30 to each guest, which would use up 4 IPs per guest.
+</span><span style=color:#6272a4>//   Using proxy ARP, we can advertise the whole pool to each guest as its subnet
+</span><span style=color:#6272a4>//   but have the host respond to all ARP requests and route all the traffic whether
+</span><span style=color:#6272a4>//   it is on or off subnet.
+</span><span style=color:#6272a4>//
+</span><span style=color:#6272a4>// - For containers, we install explicit routes into the containers network
+</span><span style=color:#6272a4>//   namespace and we use a link-local address for the gateway.  Turing on proxy ARP
+</span><span style=color:#6272a4>//   means that we don&#39;t need to assign the link local address explicitly to each
+</span><span style=color:#6272a4>//   host side of the veth, which is one fewer thing to maintain and one fewer
+</span><span style=color:#6272a4>//   thing we may clash over.
+</span><span style=color:#6272a4></span>err = m.<span style=color:#50fa7b>writeProcSys</span>(fmt.<span style=color:#50fa7b>Sprintf</span>(<span style=color:#f1fa8c>&#34;/proc/sys/net/ipv4/conf/%s/proxy_arp&#34;</span>, name), <span style=color:#f1fa8c>&#34;1&#34;</span>)
+<span style=color:#ff79c6>if</span> err <span style=color:#ff79c6>!=</span> <span style=color:#ff79c6>nil</span> {
+    <span style=color:#ff79c6>return</span> err
+}
+<span style=color:#6272a4>// Normally, the kernel has a delay before responding to proxy ARP but we know
+</span><span style=color:#6272a4>// that&#39;s not needed in a Calico network so we disable it.
+</span><span style=color:#6272a4></span>err = m.<span style=color:#50fa7b>writeProcSys</span>(fmt.<span style=color:#50fa7b>Sprintf</span>(<span style=color:#f1fa8c>&#34;/proc/sys/net/ipv4/neigh/%s/proxy_delay&#34;</span>, name), <span style=color:#f1fa8c>&#34;0&#34;</span>)
+<span style=color:#ff79c6>if</span> err <span style=color:#ff79c6>!=</span> <span style=color:#ff79c6>nil</span> {
+    <span style=color:#ff79c6>return</span> err
+}
+<span style=color:#6272a4>// Enable IP forwarding of packets coming _from_ this interface.  For packets to
+</span><span style=color:#6272a4>// be forwarded in both directions we need this flag to be set on the fabric-facing
+</span><span style=color:#6272a4>// interface too (or for the global default to be set).
+</span><span style=color:#6272a4></span>err = m.<span style=color:#50fa7b>writeProcSys</span>(fmt.<span style=color:#50fa7b>Sprintf</span>(<span style=color:#f1fa8c>&#34;/proc/sys/net/ipv4/conf/%s/forwarding&#34;</span>, name), <span style=color:#f1fa8c>&#34;1&#34;</span>)
+<span style=color:#ff79c6>if</span> err <span style=color:#ff79c6>!=</span> <span style=color:#ff79c6>nil</span> {
+    <span style=color:#ff79c6>return</span> err
+}
+</code></pre></div><a href=#fnref:14 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></li><li id=fn:15 role=doc-endnote><p>For the lazy reader I reported the whole sequence here. Create the container:</p><pre><code>unshare -pmn -f chroot rootfs /usr/bin/env -i \
+    HOME=/root \
+    PATH=/bin:/usr/bin:/sbin:/usr/sbin \
+    /bin/ash -l
+</code></pre><p>Then from the host:</p><pre><code>CPID=$(ps -C ash -o pid= | tr -d ' ')
+ip link add veth0 type veth peer name veth1
+ip link set veth1 netns $CPID
+ip link set dev veth0 up
+echo 1 &gt; /proc/sys/net/ipv4/conf/veth0/rp_filter
+echo 1 &gt; /proc/sys/net/ipv4/conf/veth0/route_localnet
+echo 1 &gt;/proc/sys/net/ipv4/conf/veth0/proxy_arp
+echo 0 &gt;/proc/sys/net/ipv4/neigh/veth0/proxy_delay
+echo 1 &gt;/proc/sys/net/ipv4/conf/veth0/forwarding
+echo 1 &gt;/proc/sys/net/ipv4/conf/eth0/forwarding
+ip r add 172.19.36.2 dev veth0 scope link
+ip r add blackhole 172.19.36.0/24
+</code></pre><p>and from the container:</p><pre><code>ip link set dev lo up
+MAC=$(ip addr show dev veth1 | grep 'link/ether' | tr -s ' ' | cut -d' ' -f3)
+ip link set dev veth1 name eth0 address $MAC
+ip addr add dev eth0 172.19.36.2/32
+ip link set eth0 up
+ip r add 169.254.1.1 dev eth0  scope link
+ip r add default via 169.254.1.1 dev eth0
+</code></pre><a href=#fnref:15 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></li></ol></section></div><footer class=post-footer><ul class=post-tags><li><a href=https://blog.mbrt.dev/tags/linux/>linux</a></li><li><a href=https://blog.mbrt.dev/tags/containers/>containers</a></li></ul><nav class=paginav><a class=next href=https://blog.mbrt.dev/posts/antifurto/><span class=title>Next Page »</span><br><span>Antifurto: home made security camera</span></a></nav><div class=share-buttons><a target=_blank rel="noopener noreferrer" aria-label="share Demystifying container networking on twitter" href="https://twitter.com/intent/tweet/?text=Demystifying%20container%20networking&url=https%3a%2f%2fblog.mbrt.dev%2fposts%2fcontainer-network%2f&hashtags=linux%2ccontainers"><svg viewBox="0 0 512 512"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H62.554c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892zM195.519 424.544c135.939.0 210.268-112.643 210.268-210.268.0-3.218.0-6.437-.153-9.502 14.406-10.421 26.973-23.448 36.935-38.314-13.18 5.824-27.433 9.809-42.452 11.648 15.326-9.196 26.973-23.602 32.49-40.92-14.252 8.429-30.038 14.56-46.896 17.931-13.487-14.406-32.644-23.295-53.946-23.295-40.767.0-73.87 33.104-73.87 73.87.0 5.824.613 11.494 1.992 16.858-61.456-3.065-115.862-32.49-152.337-77.241-6.284 10.881-9.962 23.601-9.962 37.088.0 25.594 13.027 48.276 32.95 61.456-12.107-.307-23.448-3.678-33.41-9.196v.92c0 35.862 25.441 65.594 59.311 72.49-6.13 1.686-12.72 2.606-19.464 2.606-4.751.0-9.348-.46-13.946-1.38 9.349 29.426 36.628 50.728 68.965 51.341-25.287 19.771-57.164 31.571-91.8 31.571-5.977.0-11.801-.306-17.625-1.073 32.337 21.15 71.264 33.41 112.95 33.41z"/></svg></a><a target=_blank rel="noopener noreferrer" aria-label="share Demystifying container networking on linkedin" href="https://www.linkedin.com/shareArticle?mini=true&url=https%3a%2f%2fblog.mbrt.dev%2fposts%2fcontainer-network%2f&title=Demystifying%20container%20networking&summary=Demystifying%20container%20networking&source=https%3a%2f%2fblog.mbrt.dev%2fposts%2fcontainer-network%2f"><svg viewBox="0 0 512 512"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H62.554c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892zM160.461 423.278V197.561h-75.04v225.717h75.04zm270.539.0V293.839c0-69.333-37.018-101.586-86.381-101.586-39.804.0-57.634 21.891-67.617 37.266v-31.958h-75.021c.995 21.181.0 225.717.0 225.717h75.02V297.222c0-6.748.486-13.492 2.474-18.315 5.414-13.475 17.767-27.434 38.494-27.434 27.135.0 38.007 20.707 38.007 51.037v120.768H431zM123.448 88.722C97.774 88.722 81 105.601 81 127.724c0 21.658 16.264 39.002 41.455 39.002h.484c26.165.0 42.452-17.344 42.452-39.002-.485-22.092-16.241-38.954-41.943-39.002z"/></svg></a><a target=_blank rel="noopener noreferrer" aria-label="share Demystifying container networking on reddit" href="https://reddit.com/submit?url=https%3a%2f%2fblog.mbrt.dev%2fposts%2fcontainer-network%2f&title=Demystifying%20container%20networking"><svg viewBox="0 0 512 512"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H62.554c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892zM446 265.638c0-22.964-18.616-41.58-41.58-41.58-11.211.0-21.361 4.457-28.841 11.666-28.424-20.508-67.586-33.757-111.204-35.278l18.941-89.121 61.884 13.157c.756 15.734 13.642 28.29 29.56 28.29 16.407.0 29.706-13.299 29.706-29.701.0-16.403-13.299-29.702-29.706-29.702-11.666.0-21.657 6.792-26.515 16.578l-69.105-14.69c-1.922-.418-3.939-.042-5.585 1.036-1.658 1.073-2.811 2.761-3.224 4.686l-21.152 99.438c-44.258 1.228-84.046 14.494-112.837 35.232-7.468-7.164-17.589-11.591-28.757-11.591-22.965.0-41.585 18.616-41.585 41.58.0 16.896 10.095 31.41 24.568 37.918-.639 4.135-.99 8.328-.99 12.576.0 63.977 74.469 115.836 166.33 115.836s166.334-51.859 166.334-115.836c0-4.218-.347-8.387-.977-12.493 14.564-6.47 24.735-21.034 24.735-38.001zM326.526 373.831c-20.27 20.241-59.115 21.816-70.534 21.816-11.428.0-50.277-1.575-70.522-21.82-3.007-3.008-3.007-7.882.0-10.889 3.003-2.999 7.882-3.003 10.885.0 12.777 12.781 40.11 17.317 59.637 17.317 19.522.0 46.86-4.536 59.657-17.321 3.016-2.999 7.886-2.995 10.885.008 3.008 3.011 3.003 7.882-.008 10.889zm-5.23-48.781c-16.373.0-29.701-13.324-29.701-29.698.0-16.381 13.328-29.714 29.701-29.714 16.378.0 29.706 13.333 29.706 29.714.0 16.374-13.328 29.698-29.706 29.698zM160.91 295.348c0-16.381 13.328-29.71 29.714-29.71 16.369.0 29.689 13.329 29.689 29.71.0 16.373-13.32 29.693-29.689 29.693-16.386.0-29.714-13.32-29.714-29.693z"/></svg></a><a target=_blank rel="noopener noreferrer" aria-label="share Demystifying container networking on facebook" href="https://facebook.com/sharer/sharer.php?u=https%3a%2f%2fblog.mbrt.dev%2fposts%2fcontainer-network%2f"><svg viewBox="0 0 512 512"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H342.978V319.085h66.6l12.672-82.621h-79.272v-53.617c0-22.603 11.073-44.636 46.58-44.636H425.6v-70.34s-32.71-5.582-63.982-5.582c-65.288.0-107.96 39.569-107.96 111.204v62.971h-72.573v82.621h72.573V512h-191.104c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892z"/></svg></a><a target=_blank rel="noopener noreferrer" aria-label="share Demystifying container networking on whatsapp" href="https://api.whatsapp.com/send?text=Demystifying%20container%20networking%20-%20https%3a%2f%2fblog.mbrt.dev%2fposts%2fcontainer-network%2f"><svg viewBox="0 0 512 512"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H62.554c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892zm-58.673 127.703c-33.842-33.881-78.847-52.548-126.798-52.568-98.799.0-179.21 80.405-179.249 179.234-.013 31.593 8.241 62.428 23.927 89.612l-25.429 92.884 95.021-24.925c26.181 14.28 55.659 21.807 85.658 21.816h.074c98.789.0 179.206-80.413 179.247-179.243.018-47.895-18.61-92.93-52.451-126.81zM263.976 403.485h-.06c-26.734-.01-52.954-7.193-75.828-20.767l-5.441-3.229-56.386 14.792 15.05-54.977-3.542-5.637c-14.913-23.72-22.791-51.136-22.779-79.287.033-82.142 66.867-148.971 149.046-148.971 39.793.014 77.199 15.531 105.329 43.692 28.128 28.16 43.609 65.592 43.594 105.4-.034 82.149-66.866 148.983-148.983 148.984zm81.721-111.581c-4.479-2.242-26.499-13.075-30.604-14.571-4.105-1.495-7.091-2.241-10.077 2.241-2.986 4.483-11.569 14.572-14.182 17.562-2.612 2.988-5.225 3.364-9.703 1.12-4.479-2.241-18.91-6.97-36.017-22.23C231.8 264.15 222.81 249.484 220.198 245s-.279-6.908 1.963-9.14c2.016-2.007 4.48-5.232 6.719-7.847 2.24-2.615 2.986-4.484 4.479-7.472 1.493-2.99.747-5.604-.374-7.846-1.119-2.241-10.077-24.288-13.809-33.256-3.635-8.733-7.327-7.55-10.077-7.688-2.609-.13-5.598-.158-8.583-.158-2.986.0-7.839 1.121-11.944 5.604-4.105 4.484-15.675 15.32-15.675 37.364.0 22.046 16.048 43.342 18.287 46.332 2.24 2.99 31.582 48.227 76.511 67.627 10.685 4.615 19.028 7.371 25.533 9.434 10.728 3.41 20.492 2.929 28.209 1.775 8.605-1.285 26.499-10.833 30.231-21.295 3.732-10.464 3.732-19.431 2.612-21.298-1.119-1.869-4.105-2.99-8.583-5.232z"/></svg></a><a target=_blank rel="noopener noreferrer" aria-label="share Demystifying container networking on telegram" href="https://telegram.me/share/url?text=Demystifying%20container%20networking&url=https%3a%2f%2fblog.mbrt.dev%2fposts%2fcontainer-network%2f"><svg viewBox="2 2 28 28"><path d="M26.49 29.86H5.5a3.37 3.37.0 01-2.47-1 3.35 3.35.0 01-1-2.47V5.48A3.36 3.36.0 013 3 3.37 3.37.0 015.5 2h21A3.38 3.38.0 0129 3a3.36 3.36.0 011 2.46V26.37a3.35 3.35.0 01-1 2.47 3.38 3.38.0 01-2.51 1.02zm-5.38-6.71a.79.79.0 00.85-.66L24.73 9.24a.55.55.0 00-.18-.46.62.62.0 00-.41-.17q-.08.0-16.53 6.11a.59.59.0 00-.41.59.57.57.0 00.43.52l4 1.24 1.61 4.83a.62.62.0 00.63.43.56.56.0 00.4-.17L16.54 20l4.09 3A.9.9.0 0021.11 23.15zM13.8 20.71l-1.21-4q8.72-5.55 8.78-5.55c.15.0.23.0.23.16a.18.18.0 010 .06s-2.51 2.3-7.52 6.8z"/></svg></a></div></footer></article></main><footer class=footer><span>&copy; 2021 <a href=https://blog.mbrt.dev/>mbrt blog</a></span>
+<span>&#183;</span>
+<span>Powered by <a href=https://gohugo.io/ rel="noopener noreferrer" target=_blank>Hugo</a></span>
+<span>&#183;</span>
+<span>Theme <a href=https://git.io/hugopapermod rel=noopener target=_blank>PaperMod</a></span></footer><a href=#top aria-label="go to top" title="Go to Top (Alt + G)"><button class=top-link id=top-link type=button accesskey=g><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentcolor"><path d="M12 6H0l6-6z"/></svg></button></a>
+<script>window.onload=function(){localStorage.getItem("menu-scroll-position")&&(document.getElementById('menu').scrollLeft=localStorage.getItem("menu-scroll-position"))};function menu_on_scroll(){localStorage.setItem("menu-scroll-position",document.getElementById('menu').scrollLeft)}document.querySelectorAll('a[href^="#"]').forEach(a=>{a.addEventListener("click",function(b){b.preventDefault();var a=this.getAttribute("href").substr(1);window.matchMedia('(prefers-reduced-motion: reduce)').matches?document.querySelector(`[id='${decodeURIComponent(a)}']`).scrollIntoView():document.querySelector(`[id='${decodeURIComponent(a)}']`).scrollIntoView({behavior:"smooth"}),a==="top"?history.replaceState(null,null," "):history.pushState(null,null,`#${a}`)})})</script><script>var mybutton=document.getElementById("top-link");window.onscroll=function(){document.body.scrollTop>800||document.documentElement.scrollTop>800?(mybutton.style.visibility="visible",mybutton.style.opacity="1"):(mybutton.style.visibility="hidden",mybutton.style.opacity="0")}</script><script>document.getElementById("theme-toggle").addEventListener("click",()=>{document.body.className.includes("dark")?(document.body.classList.remove('dark'),localStorage.setItem("pref-theme",'light')):(document.body.classList.add('dark'),localStorage.setItem("pref-theme",'dark'))})</script></body></html>

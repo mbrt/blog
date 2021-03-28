@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>raspberry-pi on mbrt blog</title>
+    <link>https://blog.mbrt.dev/tags/raspberry-pi/</link>
+    <description>Recent content in raspberry-pi on mbrt blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <lastBuildDate>Fri, 07 Jul 2017 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/tags/raspberry-pi/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Antifurto: home made security camera</title>
+      <link>https://blog.mbrt.dev/posts/antifurto/</link>
+      <pubDate>Fri, 07 Jul 2017 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/posts/antifurto/</guid>
+      <description>Introduction In February 2014 I had a very unpleasant surprise after coming back home from a weekend in Berlin. Me and my girlfriend found out our apartment upside down because of burglars. We suffered the loss not only of many of our belongings, but worse, of our safety. We didn&amp;rsquo;t feel safe in our home and we didn&amp;rsquo;t feel safe to leave it - not even for half an hour - for the fear to come back and find somebody inside.</description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,739 @@
+<!doctype html><html lang=en dir=auto><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=robots content="index, follow"><title>Ripgrep code review | mbrt blog</title><meta name=keywords content="rust,code-review"><meta name=description content="I&rsquo;ve been playing around with Rust for a year and a half, and the best part of it, like many others say, has been the very helpful community. There are a lot of online resources that help you to get started: the Rust book, the Rustonomicon and many blog posts and stack overflow questions. After I learned the basics I felt a bit lost though. I couldn&rsquo;t find enough resources for intermediate-level-Rustaceans."><meta name=author content="Michele Bertasi"><link rel=canonical href=https://blog.mbrt.dev/posts/ripgrep/><link href=/assets/css/stylesheet.min.29fa5c8ced467373f160c1c13ce4a1fb72b651a4b2321cd5e1b95238c68a20eb.css integrity="sha256-KfpcjO1Gc3PxYMHBPOSh+3K2UaSyMhzV4blSOMaKIOs=" rel="preload stylesheet" as=style><link rel=icon href=https://blog.mbrt.dev/favicon.ico><link rel=icon type=image/png sizes=16x16 href=https://blog.mbrt.dev/favicon-16x16.png><link rel=icon type=image/png sizes=32x32 href=https://blog.mbrt.dev/favicon-32x32.png><link rel=apple-touch-icon href=https://blog.mbrt.dev/apple-touch-icon.png><link rel=mask-icon href=https://blog.mbrt.dev/safari-pinned-tab.svg><meta name=theme-color content="#2e2e33"><meta name=msapplication-TileColor content="#2e2e33"><meta name=generator content="Hugo 0.82.0"><meta property="og:title" content="Ripgrep code review"><meta property="og:description" content="I&rsquo;ve been playing around with Rust for a year and a half, and the best part of it, like many others say, has been the very helpful community. There are a lot of online resources that help you to get started: the Rust book, the Rustonomicon and many blog posts and stack overflow questions. After I learned the basics I felt a bit lost though. I couldn&rsquo;t find enough resources for intermediate-level-Rustaceans."><meta property="og:type" content="article"><meta property="og:url" content="https://blog.mbrt.dev/posts/ripgrep/"><meta property="article:section" content="posts"><meta property="article:published_time" content="2016-12-01T00:00:00+00:00"><meta property="article:modified_time" content="2016-12-01T00:00:00+00:00"><meta name=twitter:card content="summary"><meta name=twitter:title content="Ripgrep code review"><meta name=twitter:description content="I&rsquo;ve been playing around with Rust for a year and a half, and the best part of it, like many others say, has been the very helpful community. There are a lot of online resources that help you to get started: the Rust book, the Rustonomicon and many blog posts and stack overflow questions. After I learned the basics I felt a bit lost though. I couldn&rsquo;t find enough resources for intermediate-level-Rustaceans."><script type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Posts","item":"https://blog.mbrt.dev/posts/"},{"@type":"ListItem","position":2,"name":"Ripgrep code review","item":"https://blog.mbrt.dev/posts/ripgrep/"}]}</script><script type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"Ripgrep code review","name":"Ripgrep code review","description":"I\u0026rsquo;ve been playing around with Rust for a year and a half, and the best part of it, like many others say, has been the very helpful community. There are a lot of online resources that help you to get started: the Rust book, the Rustonomicon and many blog posts and stack overflow questions. After I learned the basics I felt a bit lost though. I couldn\u0026rsquo;t find enough resources for intermediate-level-Rustaceans.","keywords":["rust","code-review"],"articleBody":"I’ve been playing around with Rust for a year and a half, and the best part of it, like many others say, has been the very helpful community. There are a lot of online resources that help you to get started: the Rust book, the Rustonomicon and many blog posts and stack overflow questions. After I learned the basics I felt a bit lost though. I couldn’t find enough resources for intermediate-level-Rustaceans. I’m a C++ developer in my daily job, and so I’m used with books like Effective C++ from Scott Meyers, the Herb Sutter’s blog and a lot of online resources that always helped me with advanced C++ topics (that are a lot… :sigh:). Those resources teach you how to get the best from the language, how to use it properly, and how to structure your code to be more clear and effective. Those resources are not completely absent in the Rust community, but neither common.\nHow do you learn those things then? Well, there are two ways in my opinion: you spend a lot of time and learn by doing, or you look at some good code. I think code reviews are incredibly useful; you can see how other people reason about problems you also struggled with, and how they have solved them. This post attempts to target those intermediate-level-Rustaceans (like me), by looking at the ripgrep crate by Andrew Gallant, a great example of good Rust.\nIntroduction I’m not going to explain everything about the crate, since there is already a very good blog post by Andrew himself, explaining how the application works from a functional perspective, and some used algorithms. We are going instead to walk through the crate architecture. I’m going to take for granted some of the basics, so if you need a refresher you can take a look at the resources I mentioned above.\nWe are going to look at this specific version of the crate:\n$ git describe 0.2.5-4-gf728708 which is the last one at the time of writing. By the time you are reading this, however, the crate might have evolved, so if you want to look at the code by yourself while reading, you should checkout this specific version:\n$ git clone https://github.com/BurntSushi/ripgrep.git $ cd ripgrep $ git checkout f728708 and without further ado, let’s get started.\nThe big picture ripgrep is a command line tool for searching file contents using regular expressions, similarly to GNU grep. The tool is split across four crates: the main one (ripgrep), ignore, grep and globset.\nThe grep crate provides line-by-line regex searching from a buffer and it is used only by the main crate. The globset crate uses regex to perform glob matching over paths. It is used by the main and the ignore crates. The ignore crate implements directory walking, ignore and include patterns. It uses the glob crate for that. Finally, the main crate, that glues everything together, implements command line argument parsing, output handling and multi-threading.\nOne clear advantage of splitting an application in multiple crates is that this forces you to keep your code scoped. It’s easy to create a mess of dependencies among the components if everything is in the same crate (or, even worse, in the same module). If you instead take a part of your application and try to give it a meaning by itself, you’ll end up with a more generic, usable and clearer interface. Embrace the Single responsibility principle and let it be your guide, like ripgrep clearly does.\nMain Everything starts from the ripgrep main function:\nfn main() { match Args::parse().and_then(run) { Ok(count) if count == 0 = process::exit(1), Ok(_) = process::exit(0), Err(err) = { eprintln!(\"{}\", err); process::exit(1); } } } It is very concise: it parses the command line arguments and then passes them to the run function. In between, there is the Result::and_then combinator, so the match statement gets to the Ok branch only if both operations succeed. If not, it selects the Err branch, handling errors for both the first and the second operation. Then the exit code depends on whether the count for matches is not zero.\nfn run(args: Args) - Resultu64 { // ... } The run function at first decides if it’s worth to spawn threads or not, and if so, this is the way it setups the things:\nThe main thread, controlled by the run function digs files from the file system, and pushes them into a deque. This is a Single-producer / Multiple-consumers queue, from which multiple worker threads can pull at the same time. They will in turn perform the search operations. Here is the workers initialization in the run function:\nlet workq = { let (workq, stealer) = deque::new(); for _ in 0..threads { let worker = MultiWorker { chan_work: stealer.clone(), // initialize other fields...  }; workers.push(thread::spawn(move || worker.run())); } workq }; As you can see, the deque::new() returns two objects. The queue is indeed composed by two ends: one is the workq from which the main thread can push, and the other end is the stealer, from which all the workers can pull. The loop creates a bunch of workers and move them to new threads, along with a stealer. Note that the stealer is cloneable, but this doesn’t mean that the queue itself is cloned. Internally indeed the stealer contains an Arc to the queue:\npub struct StealerT: Send { deque: ArcDequeT, } To note here is the beauty of the deque interface. To express the fact that the producer is only one, but the consumers can be multiple, the type is split in two: the producer is then Send but not Sync, nor Clone. There is no way to use it from multiple threads, since you can move it to another thread, but in that case you lose your reference to it. The Stealer, which is the other end, is instead both Send and Clone. You can then pass it around by cloning and sending the copies off to other threads; they all refer to the same queue. There is no way to use this interface incorrectly.\nAnother thing to note here is that the workq variable is initialized by a block that returns just the producer part of a new deque. Inside the block, the workers along with their stealers are moved into new worker threads and those are in turn pushed into a vector. Using a block that just returns what it’s needed for the rest of the function is a good practice. In this way the run function is not polluted with variables that are not usable anymore because their values have been moved.\nThis is the MultiWorker struct, that runs in a separate thread:\nstruct MultiWorker { chan_work: StealerWork, quiet_matched: QuietMatched, out: ArcMutexOut, #[cfg(not(windows))] outbuf: OptionColoredTerminalterm::TerminfoTerminalVecu8, #[cfg(windows)] outbuf: OptionColoredTerminalWindowsBuffer, worker: Worker, } the first field is the stealer. As you can see from its type, the stealer receives Work structs:\nenum Work { Stdin, File(DirEntry), Quit, } The main thread will push them from its workq variable:\nfor dent in args.walker() { if quiet_matched.has_match() { break; } paths_searched += 1; if dent.is_stdin() { workq.push(Work::Stdin); } else { workq.push(Work::File(dent)); } } The args.walker() is an iterator over the files to search, or the standard input stream, if the - argument is passed. In the former case it pushes a Work::File entry with the path, in the latter a Work::Stdin entry. The items are received in the MultiWorker::run function. It is a loop that pops items from the deque and process them one by one:\nloop { if self.quiet_matched.has_match() { break; } let work = match self.chan_work.steal() { Stolen::Empty | Stolen::Abort = continue, Stolen::Data(Work::Quit) = break, Stolen::Data(Work::Stdin) = WorkReady::Stdin, Stolen::Data(Work::File(ent)) = { match File::open(ent.path()) { Ok(file) = WorkReady::DirFile(ent, file), Err(err) = { eprintln!(\"{}: {}\", ent.path().display(), err); continue; } } } }; // ... } The steal() method tries to pop from the deque and returns a Stolen instance:\npub enum StolenT { /// The deque was empty at the time of stealing  Empty, /// The stealer lost the race for stealing data, and a retry may return more  /// data.  Abort, /// The stealer has successfully stolen some data.  Data(T), } The outcome is matched against the different possibilities, but only Stolen::Data contains a Work entry. Both Stdin and File entry types are then translated into a WorkReady instance. In the second case the file is then opened with an std::fs::File. The work variable is later consumed by a Worker instance:\nself.worker.do_work(\u0026mut printer, work); We’ll get back to that in a moment, but let’s first backtrack to the MultiWorker::run loop. The Work::Quit case breaks it, so the thread terminates:\nlet work = match self.chan_work.steal() { // ...  Stolen::Data(Work::Quit) = break, // ... }; This value is pushed by the main thread after it walks through all the files.\nfor _ in 0..workers.len() { workq.push(Work::Quit); } let mut match_count = 0; for worker in workers { match_count += worker.join().unwrap(); } The threads are all guaranteed to terminate because the number of Quit messages pushed is the same as the number of workers. A worker can only consume one of them and then quit. This implies, since no messages can be lost, that all the workers will get the message at some point, and then terminate. All the workers threads are then joined, waiting for completion.\nTo recap, this is a the multi-threading pattern used:\n a deque in between a producer (that provides the work items) and a bunch of consumers (that do the heavy lifting) in separate threads; the deque carries an enumeration of the things to do, and one of them is the Quit action; the producer will eventually push a bunch of Quit messages to terminate the worker threads (one per thread).  In case you just have one type of job, it makes perfect sense to use an Option as work item, instead of an enumeration. The workers have then to terminate in case None is passed. The Option can be used also in the ripgrep case instead of the Quit message, but I’m not sure the code would be more readable:\nlet work = match self.chan_work.steal() { Stolen::Empty | Stolen::Abort = continue, Stolen::Data(None) = break, Stolen::Data(Some(Work::Stdin)) = WorkReady::Stdin, Stolen::Data(Some(Work::File(ent)) = { // ...  } }; Mono thread ripgrep can also operate in a single thread, in case there is only one file to search or only one core to use, or the user says so. The run function checks that:\nlet threads = cmp::max(1, args.threads() - 1); let isone = paths.len() == 1 \u0026\u0026 (paths[0] == Path::new(\"-\") || paths[0].is_file()); // ... if threads == 1 || isone { return run_one_thread(args.clone()); } and calls the run_one_thread function (I have removed some uninteresting details from it):\nfn run_one_thread(args: ArcArgs) - Resultu64 { let mut worker = Worker { args: args.clone(), inpbuf: args.input_buffer(), grep: args.grep(), match_count: 0, }; // ...  for dent in args.walker() { // ...  if dent.is_stdin() { worker.do_work(\u0026mut printer, WorkReady::Stdin); } else { let file = match File::open(dent.path()) { Ok(file) = file, Err(err) = { eprintln!(\"{}: {}\", dent.path().display(), err); continue; } }; worker.do_work(\u0026mut printer, WorkReady::DirFile(dent, file)); } } // ... } As you can see, the function uses a single Worker and if you remember, this struct is used by MultiWorker too. The files to search are iterated by args.walker() as before and each entry is passed to the worker, as before. The use of Worker in both cases allows code reuse to a great extent.\nThe file listing We are now going to look over the file listing functional block.\nThe default operation mode of ripgrep is to search recursively for non-binary, non-ignored files starting from the current directory (or from the user specified paths). To enumerate the files and feed the search engine, ripgrep uses the ignore crate.\nBut let’s start from the beginning: the walker function. It returns a Walk instance, it is constructed by Args and used by the run function in main:\npub fn walker(\u0026self) - Walk; Walk is just a simple wrapper around the ignore::Walk struct. A value of this struct can be created by using its new method:\npub fn newP: AsRefPath(path: P) - Walk; or with a WalkBuilder, that implements the builder pattern. This allows to customize the behavior without annoying the users of the library, since it frees them from the burden to provide a lot of parameters to the constructor, when just the default values are needed:\nlet w = WalkBuilder::new(path).ignore(true).max_depth(Some(5)).build(); In this example we have created a WalkBuilder with default arguments and just override the ignore and max_depth options.\nThe implementation of the type is not very interesting from our point of view. It is basically an Iterator that walks through the file system by using the walkdir crate, but ignores the files and directories listed in .gitignore and .ignore files possibly present, with the help of the Ignore type. We’ll look at that type a bit later. Let’s look at the Error type first:\n/// Represents an error that can occur when parsing a gitignore file. #[derive(Debug)] pub enum Error { Partial(VecError), WithLineNumber { line: u64, err: BoxError }, WithPath { path: PathBuf, err: BoxError }, Io(io::Error), Glob(String), UnrecognizedFileType(String), InvalidDefinition, } This error type has an interesting recursive definition. The Partial case of the enumeration contains a vector of Error instances, for example. WithLineNumber adds line information to an Error.1 Then the error::Error, fmt::Display and Fromio::Error traits are implemented, to make it a proper error type and to easily construct it out an io::Error. Here, the necessary boilerplate to crank up the error type are handcrafted. Another possibility could have been to use the quick-error macro, which reduces the burden to implement error types to a minimum.2\nIgnore patterns Ignore patterns are handled within the ignore crate by the Ignore struct. This type connects directory traversal with ignore semantics. In practice it builds a tree-like data structure that mimics the directories tree, in which nodes are ignore contexts. The implementation is quite complicated, but let’s give it a brief look:3\n#[derive(Clone, Debug)] pub struct Ignore(ArcIgnoreInner); #[derive(Clone, Debug)] struct IgnoreInner { compiled: ArcRwLockHashMapOsString, Ignore, dir: PathBuf, overrides: ArcOverride, types: ArcTypes, parent: OptionIgnore, is_absolute_parent: bool, absolute_base: OptionArcPathBuf, explicit_ignores: ArcVecGitignore, ignore_matcher: Gitignore, git_global_matcher: ArcGitignore, git_ignore_matcher: Gitignore, git_exclude_matcher: Gitignore, has_git: bool, opts: IgnoreOptions, } The Ignore struct is a wrapper around an atomic reference counter to the actual data (namely, the IgnoreInner). A first interesting field inside that struct is parent, that is an Option. It points to a parent entry if present. So, this is where the tree structure comes from: the Arc can be shared, so multiple Ignore can share the same parent. But that’s not all; they can also be cached in the compiled field, that has a quite complex type:\nArcRwLockHashMapOsString, Ignore This is the cache of Ignore instances that is shared among all of them. Let’s try to break it down:\n the HashMap maps paths to Ignore instances (as expected); the RwLock allows the map to be shared and modified across different threads, without causing data races; and finally the Arc allow the cache to be owned safely by different owners in different threads.  Every time a new Ignore instance has to be built and added to a tree, the implementation first looks in the cache, trying to reuse the existing instances. The tree is built dynamically, while crawling the directories, looking for the specific ignore files (e.g. .gitignore, .ignore, or .rgignore). The tree gets also custom ignore patterns from the command line, and adds them to the tree too.\nAnother interesting bit here is the add_parents signature for Ignore:\npub fn add_parentsP: AsRefPath(\u0026self, path: P) - (Ignore, OptionError); Instead of returning a Result, it returns a pair, that contains always a result and optionally an error. In this way partial failures are allowed. If you remember, the error value can also be a vector of errors, so the function can collect them while working, but then it can also return a (maybe partial) result in the end. I found this approach very interesting.\nThe search process In this section we will look at how the regex search inside a file is implemented. This process involves some modules in ripgrep and also the grep crate.\nEverything starts from Worker::do_work in main.rs. Based on the type of the file passed in, it calls search or search_mmap. The first function is used to read the input one chunk at a time and then search, while the second is used to search into a memory mapped input. In this case there is no need to read the file into a buffer, because it is already available in memory, or more precisely, the kernel will take care of this illusion.\nThe search function just creates a new Searcher and calls run on it.\nimpl'a, R: io::Read, W: Terminal + Send Searcher'a, R, W { pub fn run(mut self) - Resultu64, Error; } The first interesting thing to note here is that the run function actually consumes self, so you can’t actually run the method twice. Why is that? Let’s have a look at the new method, that creates this struct:\nimpl'a, R: io::Read, W: Terminal + Send Searcher'a, R, W { pub fn new(inp: \u0026'a mut InputBuffer, printer: \u0026'a mut PrinterW, grep: \u0026'a Grep, path: \u0026'a Path, haystack: R) - Searcher'a, R, W; } It takes a bunch of arguments and stores them into a new Searcher instance. All the arguments to Searcher are passed as reference, except haystack which is the Read stream representing the file. This means that when this struct will be destroyed, the file will be gone too. Whenever you complete the search for a file, you don’t have to do it again, indeed. You can enforce this usage by consuming the input file in the run function, or take its ownership in the constructor and force the run function to consume self.\nSince we cannot run the search twice using the same Searcher instance, why don’t we just use a function then? The approach used here has several advantages:\n you get the behavior that the search cannot be run twice with the same file (but that’s nothing that a free function could not do); you can split the function among different private functions, without passing around all the arguments; they will all take self by reference (maybe also \u0026mut self) and just use the member variables.  So, instead of:\nfn helper1(inp: \u0026mut InputBuffer, printer: \u0026mut PrinterW, grep: \u0026Grep, path: \u0026Path, haystack: \u0026mut R) { // do something with path, grep, etc } we have:\nfn helper1(\u0026mut self) { // do something with self.path, self.grep, etc } The end result is much nicer.\nThe first variable that the Searcher takes is an InputBuffer. It is defined in the same search_stream module, and it provides buffering for the input file. It has the interesting feature to be able to keep part of the data across reads. This is needed, for example, when the user requests context lines, or when a single read is not enough to reach the next end of line.\nThe fill function in the InputBuffer, reads from the input and optionally rolls over the contents of the buffer starting from the keep_from index:\nfn fillR: io::Read(\u0026mut self, rdr: \u0026mut R, keep_from: usize) - Resultbool, io::Error; The interesting implementation bit here is that the buffer grows whenever it needs more room, but it never shrinks. This avoids some re-allocations, at the expense of some memory. This approach is perfectly fine in this case, since the application is intended to work in one shot and then terminate. In a long running application such as a webserver, this is probably not what you want to do.\nAfter the buffer has been filled, the Grep matcher runs, and in case of a match, it prints the results according to the options (context lines, line numbers, etc.).\nNote that Searcher takes the input buffer by mutable reference. This means that it can be reused for the next file, without allocating new memory for the buffer with a new Searcher instance.\nI’ll be skipping most of the implementation review here, even if the code may be interesting. Most of it however is not very relevant outside this specific case. If you are interesting you can skim through the search_stream module code.\nThe other case is covered by the search_mmap function, that creates a BufferSearcher, defined in the search_buffer module, and calls run on it, like in the Searcher case:\nimpl'a, W: Send + Terminal BufferSearcher'a, W { pub fn run(mut self) - u64; } The same reasoning applies here: the struct is created and used only once for one file, because the run function takes self by value. The purpose of the search_buffer module is to search inside a file completely contained in a single buffer, instead of a stream. This buffer is provided by a memory mapped file, and it’s used only when a stream would be slower.4 This module reuses some types provided by the search_stream module:\nuse search_stream::{IterLines, Options, count_lines, is_binary}; Notably, it does not use the InputBuffer, since there is nothing to buffer here: everything is already available in the given array. The implementation is very basic, and it doesn’t support some of the features the other module does (like showing context lines).\nNo big surprises here. The only minor weak point for me is that this module depends on the search_stream one. It doesn’t actually build on top of it, but it just imports some functionality. I’d rather try to move the common implementation in another module from which they can both import. This makes sense, since the common stuff is indeed not specific to either of the modules.\nThe grep crate The grep crate provides all you need to regex search into a line. It builds on top of the Rust regex crate and adds some optimizations in the literal module. The result of a search is a Match instance, which is simply a position inside that buffer:\n#[derive(Clone, Debug, Default, Eq, PartialEq)] pub struct Match { start: usize, end: usize, } The Grep type is cloneable. This is important, since it can be built once (which is an expensive operation) and then cloned to all the worker threads:\n#[derive(Clone, Debug)] pub struct Grep { re: Regex, required: OptionRegex, opts: Options, } I won’t dig into the implementation details, since they are already very well covered in the already mentioned Andrew’s blog post.\nOutput handling The last bit we are going to investigate now is the output handling. The challenge here is that ripgrep needs to write from multiple threads to a single console avoiding to interleave the results.\nHere is how the run function in our MultiWorker handles that:\nlet mut outbuf = self.outbuf.take().unwrap(); outbuf.clear(); let mut printer = self.worker.args.printer(outbuf); self.worker.do_work(\u0026mut printer, work); // ... let outbuf = printer.into_inner(); if !outbuf.get_ref().is_empty() { let mut out = self.out.lock().unwrap(); out.write(\u0026outbuf); } self.outbuf = Some(outbuf); An output buffer is taken from self and passed to a printer. The printer is then passed to the worker, that uses it to print the results. So far all the output went to the buffer, and not to the actual console. Then, if anything has been buffered, lock the output, that is shared across all the workers, and write everything. The output buffer is reused in this interesting way: it is kept as an Option field inside the MultiWorker itself. For every file, it is taken from the option, passed by value to a Printer, and then when the Printer is done, put it back in the Option. This allows to keep it mutable and pass it around by value without creating it every time.\nThe trick used here, to avoid to interleave the prints, is to buffer all the matches found in a file into a “virtual terminal” that doesn’t print to the console. After the search in that file is done, the output is written in one shot, by locking a shared Out object and write the buffer contents to the actual console.\nLet’s take a look at the various types involved. The MultiWorker keeps a ColoredTerminal instance in its self.outbuf field. Its type depends on the platform:\n#[cfg(not(windows))] outbuf: OptionColoredTerminalterm::TerminfoTerminalVecu8, #[cfg(windows)] outbuf: OptionColoredTerminalWindowsBuffer, The self.out is the same in all the platforms:\nlet out: ArcMutexOut; As you can see, it can be shared and mutated by multiple threads, because it is wrapped in a Mutex and an Arc. Inside an Out instance, there is the terminal used to write directly to the console:\n#[cfg(not(windows))] let term: ColoredTerminalterm::TerminfoTerminalio::BufWriterio::Stdout; #[cfg(windows)] let term: ColoredTerminalWinConsoleio::Stdout; A ColoredTerminal that refers to a TerminfoTerminal on Linux, and to a WinConsole on Windows. They are both structs defined in the term crate.\nBut let’s step back a and describe all these types a little bit better. The Searcher uses a Printer whenever a match is found and the output is enabled. The Printer is defined in the printer module and it encapsulates the general output logic. It knows how to print a match, given some options, and forwards the writes to an inner Terminal type.\npub struct PrinterW { wtr: W, has_printed: bool, column: bool, context_separator: Vecu8, eol: u8, file_separator: OptionVecu8, heading: bool, line_per_match: bool, null: bool, replace: OptionVecu8, with_filename: bool, color_choice: ColorChoice } Note that I took the comments out to make it shorter. As you can see, there is a generic writer W (that is taken by value) and a lot of other options. This generic parameter is expected to implement term::Terminal and Send, as you can see in the implementation:\nimplW: Terminal + Send PrinterW { // printer implementation } The struct uses the builder pattern again, but in a slightly different flavor. The new method takes only a Terminal and sets all the options with a default value. To change them, the user needs to call the various builder methods, directly on the Printer itself, not on another builder helper. For example:\npub fn heading(mut self, yes: bool) - PrinterW { self.heading = yes; self } takes self by mutable value and, after changing the heading option, returns self by value again.\nThe implementation is simple. The public interface provides some methods to print the various match components, like the path, the context separator and the line contents. The only thing that is still not clear to me is why the Send trait is also needed, since I don’t see any threading in the struct implementation, and all the print methods require a mutable self, e.g.:\npub fn context_separate(\u0026mut self) { // N.B. We can't use `write` here because of borrowing restrictions.  if self.context_separator.is_empty() { return; } self.has_printed = true; let _ = self.wtr.write_all(\u0026self.context_separator); let _ = self.wtr.write_all(\u0026[self.eol]); } In any case, the implementation is more or less straight forward, and in the end all the writes are directed to the inner Terminal.\nIn the Linux case, the Terminal is the default one provided by the term crate itself: TerminfoTerminal. On Windows ripgrep provides a custom implementation, since the coloring needs a special treatment, to avoid performance hurt:\nThis particular implementation is a bit idiosyncratic, and the \"in-memory\" specification is to blame. In particular, on Windows, coloring requires communicating with the console synchronously as data is written to stdout. This is anathema to how ripgrep fundamentally works: by writing search results to intermediate thread local buffers in order to maximize parallelism. Eliminating parallelism on Windows isn't an option, because that would negate a tremendous performance benefit just for coloring. We've worked around this by providing an implementation of `term::Terminal` that records precisely where a color or a reset should be invoked, according to a byte offset in the in memory buffer. When the buffer is actually printed, we copy the bytes from the buffer to stdout incrementally while invoking the corresponding console APIs for coloring at the right location. The implementation is provided by WindowsBuffer:\n/// An in-memory buffer that provides Windows console coloring. #[derive(Clone, Debug)] pub struct WindowsBuffer { buf: Vecu8, pos: usize, colors: VecWindowsColor, } /// A color associated with a particular location in a buffer. #[derive(Clone, Debug)] struct WindowsColor { pos: usize, opt: WindowsOption, } /// A color or reset directive that can be translated into an instruction to /// the Windows console. #[derive(Clone, Debug)] enum WindowsOption { Foreground(Color), Background(Color), Reset, } This struct implements terminfo::Terminal as we said before, and it contains a buffer of characters to print, a position on the buffer itself, and a vector of colors and positions. Whenever the write is called, the output is buffered in self.buf:\nimpl io::Write for WindowsBuffer { fn write(\u0026mut self, buf: \u0026[u8]) - io::Resultusize { let n = try!(self.buf.write(buf)); self.pos += n; Ok(n) } fn flush(\u0026mut self) - io::Result() { Ok(()) } } and whenever a coloring option is passed, it is pushed into the colors vector, along with the current position:\nimpl Terminal for WindowsBuffer { type Output = Vecu8; fn fg(\u0026mut self, fg: Color) - term::Result() { self.push(WindowsOption::Foreground(fg)); Ok(()) } // ... } Then, when the higher level logic decides it’s time to print everything, the print_stdout is called, passing another terminal (the real one, linked with the console):\n/// Print the contents to the given terminal. pub fn print_stdoutT: Terminal + Send(\u0026self, tt: \u0026mut T) { if !tt.supports_color() { let _ = tt.write_all(\u0026self.buf); let _ = tt.flush(); return; } let mut last = 0; for col in \u0026self.colors { let _ = tt.write_all(\u0026self.buf[last..col.pos]); match col.opt { WindowsOption::Foreground(c) = { let _ = tt.fg(c); } WindowsOption::Background(c) = { let _ = tt.bg(c); } WindowsOption::Reset = { let _ = tt.reset(); } } last = col.pos; } let _ = tt.write_all(\u0026self.buf[last..]); let _ = tt.flush(); } Here, if the terminal does not support coloring, there is nothing special to do, and all the buffer contents are written. Otherwise, for every color option, it writes the buffer contents until the recorded position for that option, and than it applies the option. This is repeated until the end of the buffer.\nThe terminal is not used as is by the higher level logic, but wrapped inside a ColoredTerminal instance:\n#[derive(Clone, Debug)] pub enum ColoredTerminalT: Terminal + Send { Colored(T), NoColor(T::Output), } The purpose of this type is simple: determine if the current terminal supports coloring, and if so use it. If not, just drop the terminal and use its internal writer type. Determine color support is a costly operation, so it’s done only once, and the result is cached in a static variable, with the help of the lazy_static crate:\nlazy_static! { // Only pay for parsing the terminfo once.  static ref TERMINFO: OptionTermInfo = { match TermInfo::from_env() { Ok(info) = Some(info), Err(err) = { debug!(\"error loading terminfo for coloring: {}\", err); None } } }; } The type then implements some specialized constructors for a bunch of types:\n WindowsBuffer; WinConsole; and the one for the generic writer W: io::Write + Send.  If the terminal then supports coloring, it uses the Colored(T) enum value (where T is T: Terminal + Send). In this case the ColoredTerminal instance contains a Terminal. In the other case, the NoColor(T::Output) value is selected and a plain io::Write is used. ColoredTerminal then implements Terminal itself in this way:\nimplT: Terminal + Send term::Terminal for ColoredTerminalT { type Output = T::Output; fn fg(\u0026mut self, fg: term::color::Color) - term::Result() { self.map_result(|w| w.fg(fg)) } // other very similar implementations... } The intended behavior here is to forward the function to the inner terminal, if present, or return an error. A possible solution would have been to match self in this way:\nmatch *self { ColoredTerminal::Colored(ref mut w) = w.fg(fg), ColoredTerminal::NoColor(_) = Err(term::Error::NotSupported), } for all the functions. The solution adopted here is more elegant, as it Implements a map_result that applies the given function to the inner Terminal if it’s present and returns an error otherwise:\nimplT: Terminal + Send ColoredTerminalT { fn map_resultF(\u0026mut self, mut f: F) - term::Result() where F: FnMut(\u0026mut T) - term::Result() { match *self { ColoredTerminal::Colored(ref mut w) = f(w), ColoredTerminal::NoColor(_) = Err(term::Error::NotSupported), } } } In this way the whole Terminal implementation is just a bunch of one-liners.\nThe missing piece of this puzzle is the Out struct. The comment on top of the struct speaks for itself:\n/// Out controls the actual output of all search results for a particular file /// to the end user. /// /// (The difference between Out and Printer is that a Printer works with /// individual search results where as Out works with search results for each /// file as a whole. For example, it knows when to print a file separator.) pub struct Out { #[cfg(not(windows))] term: ColoredTerminalterm::TerminfoTerminalio::BufWriterio::Stdout, #[cfg(windows)] term: ColoredTerminalWinConsoleio::Stdout, printed: bool, file_separator: OptionVecu8, } The implementation is straightforward: whenever write is called with a ColoredTerminal as a buffer, it prints a separator (except for the first file), then prints the buffer contents and then flushes the terminal. Here is the Unix version:\n#[cfg(not(windows))] pub fn write(\u0026mut self, buf: \u0026ColoredTerminalterm::TerminfoTerminalVecu8) { self.write_sep(); match *buf { ColoredTerminal::Colored(ref tt) = { let _ = self.term.write_all(tt.get_ref()); } ColoredTerminal::NoColor(ref buf) = { let _ = self.term.write_all(buf); } } self.write_done(); } A very similar but not exactly equal version is provided for Windows, so there is some code duplication. It would be better to abstract these details in ColoredTerminal, providing a write_all method there, or in alternative, to introduce a new trait used by ColoredTerminal itself that does the same and than make TerminfoTerminal, WindowsBuffer and WindowsConsole to implement it.\nConcluding remarks In this post we have done a ripgrep code review, with the main focus on the design decisions and the interesting implementation solutions. The review is far from being complete, but my goal was to look at the patterns and break them down, in hope that they can be used in similar contexts by other projects.\nIn general the code is very clean, a part certain functions that would benefit from some more comments. There is however an extensive usage of #[inline(always)] and #[inline(never)] directives in the code, that I could not explain. I wonder if they have been added after profiling and if so, why the compiler have failed to identify them correctly. A possible use case is intra-crate inlining, but compiling with rustc -C lto already allows to inline everything (by slowing down compilation).5\nIn any case, I found the ripgrep crate a beautiful piece of software, from which I could learn a lot. I hope I was able to convey this beauty with this post.\nFeedback Andrew posted his feedback on Twitter and on HN. I report his comment here, because it’s relevant for some of the remarks I made:\n ripgrep author here! This is a great review, thanks for doing it! I’d like to respond to a few of the bad things pointed out. :P\nThe search code is indeed in a less than ideal state. I’ve mostly avoided refactoring it because I want to move it to its own separate crate. I’ve been steadily doing this for other things. Namely, ripgrep used to be a single main crate plus a small regex handling crate (grep), but now it’s several: globset, grep, ignore, termcolor and wincolor. I’d like to roll the search code into the grep crate so that others can use it. Once that’s done, ripgrep proper will be a pretty small, limited mostly to argv handling and output handling.\nI do sometimes get overzealous with inline(always) and inline(never). Both are almost always a result of trying things while profiling, and then forgetting to remove them. If you look closely, most of them are in the core searching code where performance is quite important!\nFinally, this code review was done while I was in the middle of moving more of ripgrep code out into the `ignore` and `termcolor` crates. The `ignore` crate does all the gitignore handling (which is quite tricky and is now being used by the tokei project) and provides a parallel recursive directory iterator, which made ripgrep even faster! The `termcolor` crate handles cross platform coloring shenanigans, including Windows consoles and mintty. It wasn’t fun: issue #94… — The author did a great job reviewing the previous solution I used for colors though, and was something I really wasn’t proud of!\n— burntsushi@ on HN\n I have corrected a typo, thanks @toquetos.\nThere is some discussion going on in the r/rust subreddit, and on HN. Thank you guys for the feedback and the kind words, and thanks to Andrew for his great work.\nThat’s all folks.\n  In this case Box, since a recursive type cannot embed itself, otherwise it would be impossible to compute the size of the type. ↩︎\n You can find a good reference on the error handling topic in the Rust book. ↩︎\n Please bear in mind that I have taken out the comments to make it shorter. ↩︎\n Generally this happens when searching into a single huge file. ↩︎\n See When should I use inline. ↩︎\n   ","wordCount":"6159","inLanguage":"en","datePublished":"2016-12-01T00:00:00Z","dateModified":"2016-12-01T00:00:00Z","author":{"@type":"Person","name":"Michele Bertasi"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://blog.mbrt.dev/posts/ripgrep/"},"publisher":{"@type":"Organization","name":"mbrt blog","logo":{"@type":"ImageObject","url":"https://blog.mbrt.dev/favicon.ico"}}}</script></head><body id=top><script>localStorage.getItem("pref-theme")==="dark"?document.body.classList.add('dark'):localStorage.getItem("pref-theme")==="light"?document.body.classList.remove('dark'):window.matchMedia('(prefers-color-scheme: dark)').matches&&document.body.classList.add('dark')</script><noscript><style type=text/css>#theme-toggle,.top-link{display:none}</style><style>@media(prefers-color-scheme:dark){:root{--theme:#1d1e20;--entry:#2e2e33;--primary:rgba(255, 255, 255, 0.84);--secondary:rgba(255, 255, 255, 0.56);--tertiary:rgba(255, 255, 255, 0.16);--content:rgba(255, 255, 255, 0.74);--hljs-bg:#2e2e33;--code-bg:#37383e;--border:#333}.list{background:var(--theme)}.list:not(.dark)::-webkit-scrollbar-track{background:0 0}.list:not(.dark)::-webkit-scrollbar-thumb{border-color:var(--theme)}}</style></noscript><header class=header><nav class=nav><div class=logo><a href=https://blog.mbrt.dev/ accesskey=h title="mbrt blog (Alt + H)">mbrt blog</a>
+<span class=logo-switches><button id=theme-toggle accesskey=t title="(Alt + T)"><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></span></div><ul id=menu onscroll=menu_on_scroll()><li><a href=https://blog.mbrt.dev/archives/ title=Archive><span>Archive</span></a></li><li><a href=https://blog.mbrt.dev/search/ title="Search (Alt + /)" accesskey=/><span>Search</span></a></li><li><a href=https://blog.mbrt.dev/tags/ title=Tags><span>Tags</span></a></li></ul></nav></header><main class=main><article class=post-single><header class=post-header><div class=breadcrumbs><a href=https://blog.mbrt.dev/>Home</a>&nbsp;»&nbsp;<a href=https://blog.mbrt.dev/posts/>Posts</a></div><h1 class=post-title>Ripgrep code review</h1><div class=post-meta>December 1, 2016&nbsp;·&nbsp;29 min&nbsp;·&nbsp;Michele Bertasi</div></header><div class=toc><details><summary accesskey=c title="(Alt + C)"><div class=details>Table of Contents</div></summary><div class=inner><ul><li><a href=#introduction aria-label=Introduction>Introduction</a></li><li><a href=#the-big-picture aria-label="The big picture">The big picture</a></li><li><a href=#main aria-label=Main>Main</a><ul><li><a href=#mono-thread aria-label="Mono thread">Mono thread</a></li></ul></li><li><a href=#the-file-listing aria-label="The file listing">The file listing</a><ul><li><a href=#ignore-patterns aria-label="Ignore patterns">Ignore patterns</a></li></ul></li><li><a href=#the-search-process aria-label="The search process">The search process</a><ul><li><a href=#the-grep-crate aria-label="The grep crate">The grep crate</a></li></ul></li><li><a href=#output-handling aria-label="Output handling">Output handling</a></li><li><a href=#concluding-remarks aria-label="Concluding remarks">Concluding remarks</a><ul><li><a href=#feedback aria-label=Feedback>Feedback</a></li></ul></li></ul></div></details></div><div class=post-content><p>I&rsquo;ve been playing around with <a href=https://www.rust-lang.org>Rust</a> for a year and a
+half, and the best part of it, like many others say, has been the very helpful
+community. There are a lot of online resources that help you to get started: the
+<a href=https://doc.rust-lang.org/book/>Rust book</a>, the
+<a href=https://doc.rust-lang.org/nomicon/>Rustonomicon</a> and many
+<a href=https://this-week-in-rust.org/>blog posts</a> and
+<a href=http://stackoverflow.com/questions/tagged/rust>stack overflow questions</a>.
+After I learned the
+basics I felt a bit lost though. I couldn&rsquo;t find enough resources for
+intermediate-level-Rustaceans. I&rsquo;m a C++ developer in my daily job, and so I&rsquo;m
+used with books like <a href=http://www.aristeia.com/books.html>Effective C++</a> from
+Scott Meyers, the <a href=https://herbsutter.com/>Herb Sutter&rsquo;s blog</a> and a lot of
+online resources that always helped me with advanced C++ topics (that are a
+lot&mldr; :sigh:). Those resources teach you how to get the best from the
+language, how to use it properly, and how to structure your code to be more
+clear and effective. Those resources are not completely absent in the Rust
+community, but neither common.</p><p>How do you learn those things then? Well, there are two ways in my opinion: you
+spend a lot of time and learn by doing, or you look at some good code. I think
+code reviews are incredibly useful; you can see how other people reason about
+problems you also struggled with, and how they have solved them. This post
+attempts to target those intermediate-level-Rustaceans (like me), by looking at
+the <a href=https://github.com/BurntSushi/ripgrep>ripgrep</a> crate by Andrew Gallant, a
+great example of good Rust.</p><h2 id=introduction>Introduction<a hidden class=anchor aria-hidden=true href=#introduction>#</a></h2><p>I&rsquo;m not going to explain everything about the crate, since there is already a
+very good <a href=http://blog.burntsushi.net/ripgrep/>blog post</a> by Andrew himself,
+explaining how the application works from a functional perspective, and some
+used algorithms. We are going instead to walk through the crate architecture.
+I&rsquo;m going to take for granted some of the basics, so if you need a refresher you
+can take a look at the resources I mentioned above.</p><p>We are going to look at this specific version of the crate:</p><pre><code>$ git describe
+0.2.5-4-gf728708
+</code></pre><p>which is the last one at the time of writing. By the time you are reading this,
+however, the crate might have evolved, so if you want to look at the code by
+yourself while reading, you should checkout this specific version:</p><pre><code>$ git clone https://github.com/BurntSushi/ripgrep.git
+$ cd ripgrep
+$ git checkout f728708
+</code></pre><p>and without further ado, let&rsquo;s get started.</p><h2 id=the-big-picture>The big picture<a hidden class=anchor aria-hidden=true href=#the-big-picture>#</a></h2><p><code>ripgrep</code> is a command line tool for searching file contents using regular
+expressions, similarly to GNU grep. The tool is split across four crates: the
+main one (<code>ripgrep</code>), <code>ignore</code>, <code>grep</code> and <code>globset</code>.</p><p><img loading=lazy src=crates.svg alt=img></p><p>The <code>grep</code> crate provides line-by-line regex searching from a buffer and it is
+used only by the main crate. The <code>globset</code> crate uses regex to perform <a href=https://en.wikipedia.org/wiki/Glob_(programming)>glob
+matching</a> over paths. It is
+used by the main and the <code>ignore</code> crates. The <code>ignore</code> crate implements
+directory walking, ignore and include patterns. It uses the <code>glob</code> crate for
+that. Finally, the main crate, that glues everything together, implements
+command line argument parsing, output handling and multi-threading.</p><p>One clear advantage of splitting an application in multiple crates is that this
+forces you to keep your code scoped. It&rsquo;s easy to create a mess of dependencies
+among the components if everything is in the same crate (or, even worse, in the
+same module). If you instead take a part of your application and try to give it
+a meaning by itself, you&rsquo;ll end up with a more generic, usable and clearer
+interface. Embrace the
+<a href=https://en.wikipedia.org/wiki/Single_responsibility_principle>Single responsibility principle</a>
+and let it be your guide, like <code>ripgrep</code> clearly does.</p><h2 id=main>Main<a hidden class=anchor aria-hidden=true href=#main>#</a></h2><p>Everything starts from the <code>ripgrep</code> main function:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>main</span>() {
+    <span style=color:#ff79c6>match</span> Args::parse().and_then(run) {
+        <span style=color:#8be9fd;font-style:italic>Ok</span>(count) <span style=color:#ff79c6>if</span> count <span style=color:#ff79c6>==</span> <span style=color:#bd93f9>0</span> <span style=color:#ff79c6>=&gt;</span> process::exit(<span style=color:#bd93f9>1</span>),
+        <span style=color:#8be9fd;font-style:italic>Ok</span>(_) <span style=color:#ff79c6>=&gt;</span> process::exit(<span style=color:#bd93f9>0</span>),
+        <span style=color:#8be9fd;font-style:italic>Err</span>(err) <span style=color:#ff79c6>=&gt;</span> {
+            eprintln<span style=color:#ff79c6>!</span>(<span style=color:#f1fa8c>&#34;{}&#34;</span>, err);
+            process::exit(<span style=color:#bd93f9>1</span>);
+        }
+    }
+}
+</code></pre></div><p>It is very concise: it parses the command line arguments and then passes them to
+the <code>run</code> function. In between, there is the
+<a href=https://doc.rust-lang.org/std/result/enum.Result.html#method.and_then>Result::and_then</a>
+combinator, so the <code>match</code> statement gets to the <code>Ok</code> branch only if both
+operations succeed. If not, it selects the <code>Err</code> branch, handling errors for
+both the first and the second operation. Then the exit code depends on whether
+the count for matches is not zero.</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>run</span>(args: <span style=color:#50fa7b>Args</span>) -&gt; <span style=color:#8be9fd;font-style:italic>Result</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd>u64</span><span style=color:#ff79c6>&gt;</span> {
+    <span style=color:#6272a4>// ...
+</span><span style=color:#6272a4></span>}
+</code></pre></div><p>The <code>run</code> function at first decides if it&rsquo;s worth to spawn threads or not, and
+if so, this is the way it setups the things:</p><p><img loading=lazy src=main.svg alt=img></p><p>The main thread, controlled by the <code>run</code> function digs files from the file
+system, and pushes them into a <a href=https://crates.io/crates/deque>deque</a>. This is
+a Single-producer / Multiple-consumers queue, from which multiple worker threads
+can pull at the same time. They will in turn perform the search operations. Here
+is the workers initialization in the <code>run</code> function:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#8be9fd;font-style:italic>let</span> workq <span style=color:#ff79c6>=</span> {
+    <span style=color:#8be9fd;font-style:italic>let</span> (workq, stealer) <span style=color:#ff79c6>=</span> deque::new();
+    <span style=color:#ff79c6>for</span> _ <span style=color:#ff79c6>in</span> <span style=color:#bd93f9>0</span>..threads {
+        <span style=color:#8be9fd;font-style:italic>let</span> worker <span style=color:#ff79c6>=</span> MultiWorker {
+            chan_work: <span style=color:#50fa7b>stealer</span>.clone(),
+            <span style=color:#6272a4>// initialize other fields...
+</span><span style=color:#6272a4></span>        };
+        workers.push(thread::spawn(<span style=color:#ff79c6>move</span> <span style=color:#ff79c6>||</span> worker.run()));
+    }
+    workq
+};
+</code></pre></div><p>As you can see, the <code>deque::new()</code> returns two objects. The queue is indeed
+composed by two ends: one is the <code>workq</code> from which the main thread can push,
+and the other end is the <code>stealer</code>, from which all the workers can pull. The
+loop creates a bunch of workers and move them to new threads, along with a
+<code>stealer</code>. Note that the <code>stealer</code> is
+<a href=https://doc.rust-lang.org/std/clone/trait.Clone.html>cloneable</a>, but this
+doesn&rsquo;t mean that the queue itself is cloned. Internally indeed the <code>stealer</code>
+contains an <a href=https://doc.rust-lang.org/std/sync/struct.Arc.html>Arc</a> to the
+queue:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>struct</span> <span style=color:#50fa7b>Stealer</span><span style=color:#ff79c6>&lt;</span>T: <span style=color:#8be9fd;font-style:italic>Send</span><span style=color:#ff79c6>&gt;</span> {
+    deque: <span style=color:#50fa7b>Arc</span><span style=color:#ff79c6>&lt;</span>Deque<span style=color:#ff79c6>&lt;</span>T<span style=color:#ff79c6>&gt;&gt;</span>,
+}
+</code></pre></div><p>To note here is the beauty of the <code>deque</code> interface. To express the fact that
+the producer is only one, but the consumers can be multiple, the type is split
+in two: the producer is then
+<a href=https://doc.rust-lang.org/std/marker/trait.Send.html>Send</a> but not
+<a href=https://doc.rust-lang.org/std/marker/trait.Sync.html>Sync</a>, nor
+<a href=https://doc.rust-lang.org/std/clone/trait.Clone.html>Clone</a>. There is no way
+to use it from multiple threads, since you can move it to another thread, but in
+that case you lose your reference to it. The <code>Stealer</code>, which is the other end,
+is instead both <code>Send</code> and <code>Clone</code>. You can then pass it around by cloning and
+sending the copies off to other threads; they all refer to the same queue. There
+is no way to use this interface incorrectly.</p><p>Another thing to note here is that the <code>workq</code> variable is initialized by a
+block that returns just the producer part of a new <code>deque</code>. Inside the block,
+the workers along with their stealers are moved into new worker threads and
+those are in turn pushed into a vector. Using a block that just returns what
+it&rsquo;s needed for the rest of the function is a good practice. In this way the
+<code>run</code> function is not polluted with variables that are not usable anymore
+because their values have been moved.</p><p>This is the <code>MultiWorker</code> struct, that runs in a separate thread:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>struct</span> <span style=color:#50fa7b>MultiWorker</span> {
+    chan_work: <span style=color:#50fa7b>Stealer</span><span style=color:#ff79c6>&lt;</span>Work<span style=color:#ff79c6>&gt;</span>,
+    quiet_matched: <span style=color:#50fa7b>QuietMatched</span>,
+    out: <span style=color:#50fa7b>Arc</span><span style=color:#ff79c6>&lt;</span>Mutex<span style=color:#ff79c6>&lt;</span>Out<span style=color:#ff79c6>&gt;&gt;</span>,
+    <span style=color:#ff79c6>#[cfg(not(windows))]</span>
+    outbuf: <span style=color:#8be9fd;font-style:italic>Option</span><span style=color:#ff79c6>&lt;</span>ColoredTerminal<span style=color:#ff79c6>&lt;</span>term::TerminfoTerminal<span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd;font-style:italic>Vec</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd>u8</span><span style=color:#ff79c6>&gt;&gt;&gt;&gt;</span>,
+    <span style=color:#ff79c6>#[cfg(windows)]</span>
+    outbuf: <span style=color:#8be9fd;font-style:italic>Option</span><span style=color:#ff79c6>&lt;</span>ColoredTerminal<span style=color:#ff79c6>&lt;</span>WindowsBuffer<span style=color:#ff79c6>&gt;&gt;</span>,
+    worker: <span style=color:#50fa7b>Worker</span>,
+}
+</code></pre></div><p>the first field is the stealer. As you can see from its type, the stealer
+receives <code>Work</code> structs:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>enum</span> <span style=color:#50fa7b>Work</span> {
+    Stdin,
+    File(DirEntry),
+    Quit,
+}
+</code></pre></div><p>The main thread will push them from its <code>workq</code> variable:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>for</span> dent <span style=color:#ff79c6>in</span> args.walker() {
+    <span style=color:#ff79c6>if</span> quiet_matched.has_match() {
+        <span style=color:#ff79c6>break</span>;
+    }
+    paths_searched <span style=color:#ff79c6>+=</span> <span style=color:#bd93f9>1</span>;
+    <span style=color:#ff79c6>if</span> dent.is_stdin() {
+        workq.push(Work::Stdin);
+    } <span style=color:#ff79c6>else</span> {
+        workq.push(Work::File(dent));
+    }
+}
+</code></pre></div><p>The <code>args.walker()</code> is an iterator over the files to search, or the standard
+input stream, if the <code>-</code> argument is passed. In the former case it pushes a
+<code>Work::File</code> entry with the path, in the latter a <code>Work::Stdin</code> entry. The items
+are received in the <code>MultiWorker::run</code> function. It is a loop that pops items
+from the <code>deque</code> and process them one by one:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>loop</span> {
+    <span style=color:#ff79c6>if</span> self.quiet_matched.has_match() {
+        <span style=color:#ff79c6>break</span>;
+    }
+    <span style=color:#8be9fd;font-style:italic>let</span> work <span style=color:#ff79c6>=</span> <span style=color:#ff79c6>match</span> self.chan_work.steal() {
+        Stolen::Empty <span style=color:#ff79c6>|</span> Stolen::Abort <span style=color:#ff79c6>=&gt;</span> <span style=color:#ff79c6>continue</span>,
+        Stolen::Data(Work::Quit) <span style=color:#ff79c6>=&gt;</span> <span style=color:#ff79c6>break</span>,
+        Stolen::Data(Work::Stdin) <span style=color:#ff79c6>=&gt;</span> WorkReady::Stdin,
+        Stolen::Data(Work::File(ent)) <span style=color:#ff79c6>=&gt;</span> {
+            <span style=color:#ff79c6>match</span> File::open(ent.path()) {
+                <span style=color:#8be9fd;font-style:italic>Ok</span>(file) <span style=color:#ff79c6>=&gt;</span> WorkReady::DirFile(ent, file),
+                <span style=color:#8be9fd;font-style:italic>Err</span>(err) <span style=color:#ff79c6>=&gt;</span> {
+                    eprintln<span style=color:#ff79c6>!</span>(<span style=color:#f1fa8c>&#34;{}: {}&#34;</span>, ent.path().display(), err);
+                    <span style=color:#ff79c6>continue</span>;
+                }
+            }
+        }
+    };
+    <span style=color:#6272a4>// ...
+</span><span style=color:#6272a4></span>}
+</code></pre></div><p>The <code>steal()</code> method tries to pop from the <code>deque</code> and returns a <code>Stolen</code>
+instance:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>enum</span> <span style=color:#50fa7b>Stolen</span><span style=color:#ff79c6>&lt;</span>T<span style=color:#ff79c6>&gt;</span> {
+    <span style=color:#f1fa8c>/// The deque was empty at the time of stealing
+</span><span style=color:#f1fa8c></span>    Empty,
+    <span style=color:#f1fa8c>/// The stealer lost the race for stealing data, and a retry may return more
+</span><span style=color:#f1fa8c></span>    <span style=color:#f1fa8c>/// data.
+</span><span style=color:#f1fa8c></span>    Abort,
+    <span style=color:#f1fa8c>/// The stealer has successfully stolen some data.
+</span><span style=color:#f1fa8c></span>    Data(T),
+}
+</code></pre></div><p>The outcome is matched against the different possibilities, but only
+<code>Stolen::Data</code> contains a <code>Work</code> entry. Both <code>Stdin</code> and <code>File</code> entry types are
+then translated into a <code>WorkReady</code> instance. In the second case the file is then
+opened with an <code>std::fs::File</code>. The <code>work</code> variable is later consumed by a
+<code>Worker</code> instance:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust>self.worker.do_work(<span style=color:#ff79c6>&amp;</span><span style=color:#ff79c6>mut</span> printer, work);
+</code></pre></div><p>We&rsquo;ll get back to that in a moment, but let&rsquo;s first backtrack to the
+<code>MultiWorker::run</code> loop. The <code>Work::Quit</code> case breaks it, so the thread
+terminates:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#8be9fd;font-style:italic>let</span> work <span style=color:#ff79c6>=</span> <span style=color:#ff79c6>match</span> self.chan_work.steal() {
+    <span style=color:#6272a4>// ...
+</span><span style=color:#6272a4></span>    Stolen::Data(Work::Quit) <span style=color:#ff79c6>=&gt;</span> <span style=color:#ff79c6>break</span>,
+    <span style=color:#6272a4>// ...
+</span><span style=color:#6272a4></span>};
+</code></pre></div><p>This value is pushed by the main thread after it walks through all the files.</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>for</span> _ <span style=color:#ff79c6>in</span> <span style=color:#bd93f9>0</span>..workers.len() {
+    workq.push(Work::Quit);
+}
+<span style=color:#8be9fd;font-style:italic>let</span> <span style=color:#ff79c6>mut</span> match_count <span style=color:#ff79c6>=</span> <span style=color:#bd93f9>0</span>;
+<span style=color:#ff79c6>for</span> worker <span style=color:#ff79c6>in</span> workers {
+    match_count <span style=color:#ff79c6>+=</span> worker.join().unwrap();
+}
+</code></pre></div><p>The threads are all guaranteed to terminate because the number of <code>Quit</code>
+messages pushed is the same as the number of workers. A worker can only consume
+one of them and then quit. This implies, since no messages can be lost, that all
+the workers will get the message at some point, and then terminate. All the
+workers threads are then joined, waiting for completion.</p><p>To recap, this is a the multi-threading pattern used:</p><ul><li>a <code>deque</code> in between a producer (that provides the work items) and a bunch of
+consumers (that do the heavy lifting) in separate threads;</li><li>the <code>deque</code> carries an enumeration of the things to do, and one of them is the
+<code>Quit</code> action;</li><li>the producer will eventually push a bunch of <code>Quit</code> messages to terminate the
+worker threads (one per thread).</li></ul><p>In case you just have one type of job, it makes perfect sense to use an
+<code>Option&lt;Stuff></code> as work item, instead of an enumeration. The workers have then
+to terminate in case <code>None</code> is passed. The <code>Option</code> can be used also in the
+<code>ripgrep</code> case instead of the <code>Quit</code> message, but I&rsquo;m not sure the code would be
+more readable:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#8be9fd;font-style:italic>let</span> work <span style=color:#ff79c6>=</span> <span style=color:#ff79c6>match</span> self.chan_work.steal() {
+    Stolen::Empty <span style=color:#ff79c6>|</span> Stolen::Abort <span style=color:#ff79c6>=&gt;</span> <span style=color:#ff79c6>continue</span>,
+    Stolen::Data(<span style=color:#8be9fd;font-style:italic>None</span>) <span style=color:#ff79c6>=&gt;</span> <span style=color:#ff79c6>break</span>,
+    Stolen::Data(<span style=color:#8be9fd;font-style:italic>Some</span>(Work::Stdin)) <span style=color:#ff79c6>=&gt;</span> WorkReady::Stdin,
+    Stolen::Data(<span style=color:#8be9fd;font-style:italic>Some</span>(Work::File(ent)) <span style=color:#ff79c6>=&gt;</span> {
+        <span style=color:#6272a4>// ...
+</span><span style=color:#6272a4></span>    }
+};
+</code></pre></div><h3 id=mono-thread>Mono thread<a hidden class=anchor aria-hidden=true href=#mono-thread>#</a></h3><p><code>ripgrep</code> can also operate in a single thread, in case there is only one file to
+search or only one core to use, or the user says so. The <code>run</code> function checks
+that:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#8be9fd;font-style:italic>let</span> threads <span style=color:#ff79c6>=</span> cmp::max(<span style=color:#bd93f9>1</span>, args.threads() <span style=color:#ff79c6>-</span> <span style=color:#bd93f9>1</span>);
+<span style=color:#8be9fd;font-style:italic>let</span> isone <span style=color:#ff79c6>=</span>
+    paths.len() <span style=color:#ff79c6>==</span> <span style=color:#bd93f9>1</span> <span style=color:#ff79c6>&amp;&amp;</span> (paths[<span style=color:#bd93f9>0</span>] <span style=color:#ff79c6>==</span> Path::new(<span style=color:#f1fa8c>&#34;-&#34;</span>) <span style=color:#ff79c6>||</span> paths[<span style=color:#bd93f9>0</span>].is_file());
+<span style=color:#6272a4>// ...
+</span><span style=color:#6272a4></span><span style=color:#ff79c6>if</span> threads <span style=color:#ff79c6>==</span> <span style=color:#bd93f9>1</span> <span style=color:#ff79c6>||</span> isone {
+    <span style=color:#ff79c6>return</span> run_one_thread(args.clone());
+}
+</code></pre></div><p>and calls the <code>run_one_thread</code> function (I have removed some uninteresting
+details from it):</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>run_one_thread</span>(args: <span style=color:#50fa7b>Arc</span><span style=color:#ff79c6>&lt;</span>Args<span style=color:#ff79c6>&gt;</span>) -&gt; <span style=color:#8be9fd;font-style:italic>Result</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd>u64</span><span style=color:#ff79c6>&gt;</span> {
+    <span style=color:#8be9fd;font-style:italic>let</span> <span style=color:#ff79c6>mut</span> worker <span style=color:#ff79c6>=</span> Worker {
+        args: <span style=color:#50fa7b>args</span>.clone(),
+        inpbuf: <span style=color:#50fa7b>args</span>.input_buffer(),
+        grep: <span style=color:#50fa7b>args</span>.grep(),
+        match_count: <span style=color:#bd93f9>0</span>,
+    };
+    <span style=color:#6272a4>// ...
+</span><span style=color:#6272a4></span>    <span style=color:#ff79c6>for</span> dent <span style=color:#ff79c6>in</span> args.walker() {
+        <span style=color:#6272a4>// ...
+</span><span style=color:#6272a4></span>        <span style=color:#ff79c6>if</span> dent.is_stdin() {
+            worker.do_work(<span style=color:#ff79c6>&amp;</span><span style=color:#ff79c6>mut</span> printer, WorkReady::Stdin);
+        } <span style=color:#ff79c6>else</span> {
+            <span style=color:#8be9fd;font-style:italic>let</span> file <span style=color:#ff79c6>=</span> <span style=color:#ff79c6>match</span> File::open(dent.path()) {
+                <span style=color:#8be9fd;font-style:italic>Ok</span>(file) <span style=color:#ff79c6>=&gt;</span> file,
+                <span style=color:#8be9fd;font-style:italic>Err</span>(err) <span style=color:#ff79c6>=&gt;</span> {
+                    eprintln<span style=color:#ff79c6>!</span>(<span style=color:#f1fa8c>&#34;{}: {}&#34;</span>, dent.path().display(), err);
+                    <span style=color:#ff79c6>continue</span>;
+                }
+            };
+            worker.do_work(<span style=color:#ff79c6>&amp;</span><span style=color:#ff79c6>mut</span> printer, WorkReady::DirFile(dent, file));
+        }
+    }
+    <span style=color:#6272a4>// ...
+</span><span style=color:#6272a4></span>}
+</code></pre></div><p>As you can see, the function uses a single <code>Worker</code> and if you remember, this
+struct is used by <code>MultiWorker</code> too. The files to search are iterated by
+<code>args.walker()</code> as before and each entry is passed to the <code>worker</code>, as before.
+The use of <code>Worker</code> in both cases allows code reuse to a great extent.</p><h2 id=the-file-listing>The file listing<a hidden class=anchor aria-hidden=true href=#the-file-listing>#</a></h2><p>We are now going to look over the file listing functional block.</p><p>The default operation mode of <code>ripgrep</code> is to search recursively for non-binary,
+non-ignored files starting from the current directory (or from the user
+specified paths). To enumerate the files and feed the search engine, <code>ripgrep</code>
+uses the <code>ignore</code> crate.</p><p>But let&rsquo;s start from the beginning: the <code>walker</code> function. It returns a <code>Walk</code>
+instance, it is constructed by <code>Args</code> and used by the <code>run</code> function in
+<code>main</code>:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>walker</span>(<span style=color:#ff79c6>&amp;</span>self) -&gt; <span style=color:#50fa7b>Walk</span>;
+</code></pre></div><p><code>Walk</code> is just a simple wrapper around the <code>ignore::Walk</code> struct. A value of
+this struct can be created by using its <code>new</code> method:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>new</span><span style=color:#ff79c6>&lt;</span>P: <span style=color:#8be9fd;font-style:italic>AsRef</span><span style=color:#ff79c6>&lt;</span>Path<span style=color:#ff79c6>&gt;&gt;</span>(path: <span style=color:#50fa7b>P</span>) -&gt; <span style=color:#50fa7b>Walk</span>;
+</code></pre></div><p>or with a <code>WalkBuilder</code>, that implements the <a href=https://doc.rust-lang.org/book/method-syntax.html#builder-pattern>builder
+pattern</a>.
+This allows to customize the behavior without annoying the users of the library,
+since it frees them from the burden to provide a lot of parameters to the
+constructor, when just the default values are needed:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#8be9fd;font-style:italic>let</span> w <span style=color:#ff79c6>=</span> WalkBuilder::new(path).ignore(<span style=color:#ff79c6>true</span>).max_depth(<span style=color:#8be9fd;font-style:italic>Some</span>(<span style=color:#bd93f9>5</span>)).build();
+</code></pre></div><p>In this example we have created a <code>WalkBuilder</code> with default arguments and just
+override the <code>ignore</code> and <code>max_depth</code> options.</p><p>The implementation of the type is not very interesting from our point of view.
+It is basically an <code>Iterator</code> that walks through the file system by using the
+<code>walkdir</code> crate, but ignores the files and directories listed in <code>.gitignore</code>
+and <code>.ignore</code> files possibly present, with the help of the <code>Ignore</code> type. We&rsquo;ll
+look at that type a bit later. Let&rsquo;s look at the <code>Error</code> type first:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#f1fa8c>/// Represents an error that can occur when parsing a gitignore file.
+</span><span style=color:#f1fa8c></span><span style=color:#ff79c6>#[derive(Debug)]</span>
+<span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>enum</span> <span style=color:#50fa7b>Error</span> {
+    Partial(<span style=color:#8be9fd;font-style:italic>Vec</span><span style=color:#ff79c6>&lt;</span>Error<span style=color:#ff79c6>&gt;</span>),
+    WithLineNumber { line: <span style=color:#8be9fd>u64</span>, err: <span style=color:#8be9fd;font-style:italic>Box</span><span style=color:#ff79c6>&lt;</span>Error<span style=color:#ff79c6>&gt;</span> },
+    WithPath { path: <span style=color:#50fa7b>PathBuf</span>, err: <span style=color:#8be9fd;font-style:italic>Box</span><span style=color:#ff79c6>&lt;</span>Error<span style=color:#ff79c6>&gt;</span> },
+    Io(io::Error),
+    Glob(<span style=color:#8be9fd;font-style:italic>String</span>),
+    UnrecognizedFileType(<span style=color:#8be9fd;font-style:italic>String</span>),
+    InvalidDefinition,
+}
+</code></pre></div><p>This error type has an interesting recursive definition. The <code>Partial</code> case of
+the enumeration contains a vector of <code>Error</code> instances, for example.
+<code>WithLineNumber</code> adds line information to an <code>Error</code>.<sup id=fnref:1><a href=#fn:1 class=footnote-ref role=doc-noteref>1</a></sup> Then the
+<a href=https://doc.rust-lang.org/std/error/trait.Error.html>error::Error</a>,
+<a href=https://doc.rust-lang.org/std/fmt/trait.Display.html>fmt::Display</a> and
+<a href=https://doc.rust-lang.org/std/convert/trait.From.html>From<a href=io::Error>io::Error</a></a> traits
+are implemented, to make it a proper error type and to easily construct it out
+an <code>io::Error</code>. Here, the necessary boilerplate to crank up the error type are
+handcrafted. Another possibility could have been to use the
+<a href=https://github.com/tailhook/quick-error>quick-error</a> macro, which reduces the
+burden to implement error types to a minimum.<sup id=fnref:2><a href=#fn:2 class=footnote-ref role=doc-noteref>2</a></sup></p><h3 id=ignore-patterns>Ignore patterns<a hidden class=anchor aria-hidden=true href=#ignore-patterns>#</a></h3><p>Ignore patterns are handled within the <code>ignore</code> crate by the <code>Ignore</code> struct.
+This type connects directory traversal with ignore semantics. In practice it
+builds a tree-like data structure that mimics the directories tree, in which
+nodes are ignore contexts. The implementation is quite complicated, but let&rsquo;s
+give it a brief look:<sup id=fnref:3><a href=#fn:3 class=footnote-ref role=doc-noteref>3</a></sup></p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>#[derive(Clone, Debug)]</span>
+<span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>struct</span> <span style=color:#50fa7b>Ignore</span>(Arc<span style=color:#ff79c6>&lt;</span>IgnoreInner<span style=color:#ff79c6>&gt;</span>);
+
+<span style=color:#ff79c6>#[derive(Clone, Debug)]</span>
+<span style=color:#ff79c6>struct</span> <span style=color:#50fa7b>IgnoreInner</span> {
+    compiled: <span style=color:#50fa7b>Arc</span><span style=color:#ff79c6>&lt;</span>RwLock<span style=color:#ff79c6>&lt;</span>HashMap<span style=color:#ff79c6>&lt;</span>OsString, Ignore<span style=color:#ff79c6>&gt;&gt;&gt;</span>,
+    dir: <span style=color:#50fa7b>PathBuf</span>,
+    overrides: <span style=color:#50fa7b>Arc</span><span style=color:#ff79c6>&lt;</span>Override<span style=color:#ff79c6>&gt;</span>,
+    types: <span style=color:#50fa7b>Arc</span><span style=color:#ff79c6>&lt;</span>Types<span style=color:#ff79c6>&gt;</span>,
+    parent: <span style=color:#8be9fd;font-style:italic>Option</span><span style=color:#ff79c6>&lt;</span>Ignore<span style=color:#ff79c6>&gt;</span>,
+    is_absolute_parent: <span style=color:#8be9fd>bool</span>,
+    absolute_base: <span style=color:#8be9fd;font-style:italic>Option</span><span style=color:#ff79c6>&lt;</span>Arc<span style=color:#ff79c6>&lt;</span>PathBuf<span style=color:#ff79c6>&gt;&gt;</span>,
+    explicit_ignores: <span style=color:#50fa7b>Arc</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd;font-style:italic>Vec</span><span style=color:#ff79c6>&lt;</span>Gitignore<span style=color:#ff79c6>&gt;&gt;</span>,
+    ignore_matcher: <span style=color:#50fa7b>Gitignore</span>,
+    git_global_matcher: <span style=color:#50fa7b>Arc</span><span style=color:#ff79c6>&lt;</span>Gitignore<span style=color:#ff79c6>&gt;</span>,
+    git_ignore_matcher: <span style=color:#50fa7b>Gitignore</span>,
+    git_exclude_matcher: <span style=color:#50fa7b>Gitignore</span>,
+    has_git: <span style=color:#8be9fd>bool</span>,
+    opts: <span style=color:#50fa7b>IgnoreOptions</span>,
+}
+</code></pre></div><p>The <code>Ignore</code> struct is a wrapper around an atomic reference counter to the
+actual data (namely, the <code>IgnoreInner</code>). A first interesting field inside that
+struct is <code>parent</code>, that is an <code>Option&lt;Ignore></code>. It points to a parent entry if
+present. So, this is where the tree structure comes from: the <code>Arc</code> can be
+shared, so multiple <code>Ignore</code> can share the same parent. But that&rsquo;s not all; they
+can also be cached in the <code>compiled</code> field, that has a quite complex type:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust>Arc<span style=color:#ff79c6>&lt;</span>RwLock<span style=color:#ff79c6>&lt;</span>HashMap<span style=color:#ff79c6>&lt;</span>OsString, Ignore<span style=color:#ff79c6>&gt;&gt;&gt;</span>
+</code></pre></div><p>This is the cache of <code>Ignore</code> instances that is shared among all of them.
+Let&rsquo;s try to break it down:</p><ul><li>the <code>HashMap</code> maps paths to <code>Ignore</code> instances (as expected);</li><li>the <code>RwLock</code> allows the map to be shared and modified across different
+threads, without causing data races;</li><li>and finally the <code>Arc</code> allow the cache to be owned safely by different owners
+in different threads.</li></ul><p>Every time a new <code>Ignore</code> instance has to be built and added to a tree, the
+implementation first looks in the cache, trying to reuse the existing instances.
+The tree is built dynamically, while crawling the directories, looking for the
+specific ignore files (e.g. <code>.gitignore</code>, <code>.ignore</code>, or <code>.rgignore</code>). The tree
+gets also custom ignore patterns from the command line, and adds them to the
+tree too.</p><p>Another interesting bit here is the <code>add_parents</code> signature for <code>Ignore</code>:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>add_parents</span><span style=color:#ff79c6>&lt;</span>P: <span style=color:#8be9fd;font-style:italic>AsRef</span><span style=color:#ff79c6>&lt;</span>Path<span style=color:#ff79c6>&gt;&gt;</span>(<span style=color:#ff79c6>&amp;</span>self, path: <span style=color:#50fa7b>P</span>) -&gt; (Ignore, <span style=color:#8be9fd;font-style:italic>Option</span><span style=color:#ff79c6>&lt;</span>Error<span style=color:#ff79c6>&gt;</span>);
+</code></pre></div><p>Instead of returning a <code>Result&lt;Ignore, Error></code>, it returns a pair, that contains
+always a result and optionally an error. In this way partial failures are
+allowed. If you remember, the error value can also be a vector of errors, so the
+function can collect them while working, but then it can also return a (maybe
+partial) result in the end. I found this approach very interesting.</p><h2 id=the-search-process>The search process<a hidden class=anchor aria-hidden=true href=#the-search-process>#</a></h2><p>In this section we will look at how the regex search inside a file is
+implemented. This process involves some modules in <code>ripgrep</code> and also the <code>grep</code>
+crate.</p><p>Everything starts from <code>Worker::do_work</code> in <code>main.rs</code>. Based on the type of the
+file passed in, it calls <code>search</code> or <code>search_mmap</code>. The first function is used
+to read the input one chunk at a time and then search, while the second is used
+to search into a memory mapped input. In this case there is no need to read the
+file into a buffer, because it is already available in memory, or more
+precisely, the kernel will take care of this illusion.</p><p>The <code>search</code> function just creates a new <code>Searcher</code> and calls <code>run</code> on it.</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>impl</span><span style=color:#ff79c6>&lt;</span><span style=color:#50fa7b>&#39;a</span>, R: <span style=color:#50fa7b>io</span>::Read, W: <span style=color:#50fa7b>Terminal</span> <span style=color:#ff79c6>+</span> <span style=color:#8be9fd;font-style:italic>Send</span><span style=color:#ff79c6>&gt;</span> Searcher<span style=color:#ff79c6>&lt;</span><span style=color:#50fa7b>&#39;a</span>, R, W<span style=color:#ff79c6>&gt;</span> {
+    <span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>run</span>(<span style=color:#ff79c6>mut</span> self) -&gt; <span style=color:#8be9fd;font-style:italic>Result</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd>u64</span>, Error<span style=color:#ff79c6>&gt;</span>;
+}
+</code></pre></div><p>The first interesting thing to note here is that the <code>run</code> function actually
+consumes <code>self</code>, so you can&rsquo;t actually run the method twice. Why is that? Let&rsquo;s
+have a look at the <code>new</code> method, that creates this struct:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>impl</span><span style=color:#ff79c6>&lt;</span><span style=color:#50fa7b>&#39;a</span>, R: <span style=color:#50fa7b>io</span>::Read, W: <span style=color:#50fa7b>Terminal</span> <span style=color:#ff79c6>+</span> <span style=color:#8be9fd;font-style:italic>Send</span><span style=color:#ff79c6>&gt;</span> Searcher<span style=color:#ff79c6>&lt;</span><span style=color:#50fa7b>&#39;a</span>, R, W<span style=color:#ff79c6>&gt;</span> {
+    <span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>new</span>(inp: <span style=color:#ff79c6>&amp;</span><span style=color:#50fa7b>&#39;a</span> <span style=color:#ff79c6>mut</span> InputBuffer,
+                printer: <span style=color:#ff79c6>&amp;</span><span style=color:#50fa7b>&#39;a</span> <span style=color:#ff79c6>mut</span> Printer<span style=color:#ff79c6>&lt;</span>W<span style=color:#ff79c6>&gt;</span>,
+                grep: <span style=color:#ff79c6>&amp;</span><span style=color:#50fa7b>&#39;a</span> Grep,
+                path: <span style=color:#ff79c6>&amp;</span><span style=color:#50fa7b>&#39;a</span> Path,
+                haystack: <span style=color:#50fa7b>R</span>) -&gt; <span style=color:#50fa7b>Searcher</span><span style=color:#ff79c6>&lt;</span><span style=color:#50fa7b>&#39;a</span>, R, W<span style=color:#ff79c6>&gt;</span>;
+}
+</code></pre></div><p>It takes a bunch of arguments and stores them into a new <code>Searcher</code> instance.
+All the arguments to <code>Searcher</code> are passed as reference, except <code>haystack</code> which
+is the <code>Read</code> stream representing the file. This means that when this struct
+will be destroyed, the file will be gone too. Whenever you complete the search
+for a file, you don&rsquo;t have to do it again, indeed. You can enforce this usage by
+consuming the input file in the <code>run</code> function, or take its ownership in the
+constructor and force the <code>run</code> function to consume <code>self</code>.</p><p>Since we cannot run the search twice using the same <code>Searcher</code> instance, why
+don&rsquo;t we just use a function then? The approach used here has several
+advantages:</p><ol><li>you get the behavior that the search cannot be run twice with the same file
+(but that&rsquo;s nothing that a free function could not do);</li><li>you can split the function among different private functions, without passing
+around all the arguments; they will all take <code>self</code> by reference (maybe also
+<code>&mut self</code>) and just use the member variables.</li></ol><p>So, instead of:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>helper1</span>(inp: <span style=color:#ff79c6>&amp;</span><span style=color:#50fa7b>mut</span> InputBuffer,
+            printer: <span style=color:#ff79c6>&amp;</span><span style=color:#50fa7b>mut</span> Printer<span style=color:#ff79c6>&lt;</span>W<span style=color:#ff79c6>&gt;</span>,
+            grep: <span style=color:#ff79c6>&amp;</span><span style=color:#50fa7b>Grep</span>,
+            path: <span style=color:#ff79c6>&amp;</span><span style=color:#50fa7b>Path</span>,
+            haystack: <span style=color:#ff79c6>&amp;</span><span style=color:#50fa7b>mut</span> R)
+{
+    <span style=color:#6272a4>// do something with path, grep, etc
+</span><span style=color:#6272a4></span>}
+</code></pre></div><p>we have:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>helper1</span>(<span style=color:#ff79c6>&amp;</span><span style=color:#ff79c6>mut</span> self) {
+    <span style=color:#6272a4>// do something with self.path, self.grep, etc
+</span><span style=color:#6272a4></span>}
+</code></pre></div><p>The end result is much nicer.</p><p>The first variable that the <code>Searcher</code> takes is an <code>InputBuffer</code>. It is defined
+in the same <code>search_stream</code> module, and it provides buffering for the input
+file. It has the interesting feature to be able to keep part of the data across
+reads. This is needed, for example, when the user requests context lines, or
+when a single read is not enough to reach the next end of line.</p><p>The <code>fill</code> function in the <code>InputBuffer</code>, reads from the input and optionally
+rolls over the contents of the buffer starting from the <code>keep_from</code> index:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>fill</span><span style=color:#ff79c6>&lt;</span>R: <span style=color:#50fa7b>io</span>::Read<span style=color:#ff79c6>&gt;</span>(<span style=color:#ff79c6>&amp;</span><span style=color:#ff79c6>mut</span> self, rdr: <span style=color:#ff79c6>&amp;</span><span style=color:#50fa7b>mut</span> R, keep_from: <span style=color:#8be9fd>usize</span>) -&gt; <span style=color:#8be9fd;font-style:italic>Result</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd>bool</span>, io::Error<span style=color:#ff79c6>&gt;</span>;
+</code></pre></div><p>The interesting implementation bit here is that the buffer grows whenever it
+needs more room, but it never shrinks. This avoids some re-allocations, at the
+expense of some memory. This approach is perfectly fine in this case, since the
+application is intended to work in one shot and then terminate. In a long
+running application such as a webserver, this is probably not what you want to
+do.</p><p>After the buffer has been filled, the <code>Grep</code> matcher runs, and in case of a
+match, it prints the results according to the options (context lines, line
+numbers, etc.).</p><p>Note that <code>Searcher</code> takes the input buffer by mutable reference. This means
+that it can be reused for the next file, without allocating new memory for the
+buffer with a new <code>Searcher</code> instance.</p><p>I&rsquo;ll be skipping most of the implementation review here, even if the code may be
+interesting. Most of it however is not very relevant outside this specific case.
+If you are interesting you can skim through the <code>search_stream</code> module code.</p><p>The other case is covered by the <code>search_mmap</code> function, that creates a
+<code>BufferSearcher</code>, defined in the <code>search_buffer</code> module, and calls run on it,
+like in the <code>Searcher</code> case:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>impl</span><span style=color:#ff79c6>&lt;</span><span style=color:#50fa7b>&#39;a</span>, W: <span style=color:#8be9fd;font-style:italic>Send</span> <span style=color:#ff79c6>+</span> Terminal<span style=color:#ff79c6>&gt;</span> BufferSearcher<span style=color:#ff79c6>&lt;</span><span style=color:#50fa7b>&#39;a</span>, W<span style=color:#ff79c6>&gt;</span> {
+    <span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>run</span>(<span style=color:#ff79c6>mut</span> self) -&gt; <span style=color:#8be9fd>u64</span>;
+}
+</code></pre></div><p>The same reasoning applies here: the struct is created and used only once for
+one file, because the <code>run</code> function takes <code>self</code> by value. The purpose of the
+<code>search_buffer</code> module is to search inside a file completely contained in a
+single buffer, instead of a stream. This buffer is provided by a memory mapped
+file, and it&rsquo;s used only when a stream would be slower.<sup id=fnref:4><a href=#fn:4 class=footnote-ref role=doc-noteref>4</a></sup> This module reuses
+some types provided by the <code>search_stream</code> module:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>use</span> search_stream::{IterLines, Options, count_lines, is_binary};
+</code></pre></div><p>Notably, it does not use the <code>InputBuffer</code>, since there is nothing to buffer
+here: everything is already available in the given array. The implementation is
+very basic, and it doesn&rsquo;t support some of the features the other module does
+(like showing context lines).</p><p>No big surprises here. The only minor weak point for me is that this module
+depends on the <code>search_stream</code> one. It doesn&rsquo;t actually build on top of it, but
+it just imports some functionality. I&rsquo;d rather try to move the common
+implementation in another module from which they can both import. This makes
+sense, since the common stuff is indeed not specific to either of the modules.</p><h3 id=the-grep-crate>The grep crate<a hidden class=anchor aria-hidden=true href=#the-grep-crate>#</a></h3><p>The <code>grep</code> crate provides all you need to regex search into a line. It builds on
+top of the <a href=https://doc.rust-lang.org/regex/regex/index.html>Rust regex</a> crate
+and adds some optimizations in the <code>literal</code> module. The result of a search is a
+<code>Match</code> instance, which is simply a position inside that buffer:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>#[derive(Clone, Debug, Default, Eq, PartialEq)]</span>
+<span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>struct</span> <span style=color:#50fa7b>Match</span> {
+    start: <span style=color:#8be9fd>usize</span>,
+    end: <span style=color:#8be9fd>usize</span>,
+}
+</code></pre></div><p>The <code>Grep</code> type is cloneable. This is important, since it can be built once
+(which is an expensive operation) and then cloned to all the worker threads:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>#[derive(Clone, Debug)]</span>
+<span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>struct</span> <span style=color:#50fa7b>Grep</span> {
+    re: <span style=color:#50fa7b>Regex</span>,
+    required: <span style=color:#8be9fd;font-style:italic>Option</span><span style=color:#ff79c6>&lt;</span>Regex<span style=color:#ff79c6>&gt;</span>,
+    opts: <span style=color:#50fa7b>Options</span>,
+}
+</code></pre></div><p>I won&rsquo;t dig into the implementation details, since they are already very well
+covered in the already mentioned <a href=http://blog.burntsushi.net/ripgrep/>Andrew&rsquo;s blog
+post</a>.</p><h2 id=output-handling>Output handling<a hidden class=anchor aria-hidden=true href=#output-handling>#</a></h2><p>The last bit we are going to investigate now is the output handling. The
+challenge here is that <code>ripgrep</code> needs to write from multiple threads to a
+single console avoiding to interleave the results.</p><p>Here is how the <code>run</code> function in our <code>MultiWorker</code> handles that:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#8be9fd;font-style:italic>let</span> <span style=color:#ff79c6>mut</span> outbuf <span style=color:#ff79c6>=</span> self.outbuf.take().unwrap();
+outbuf.clear();
+<span style=color:#8be9fd;font-style:italic>let</span> <span style=color:#ff79c6>mut</span> printer <span style=color:#ff79c6>=</span> self.worker.args.printer(outbuf);
+self.worker.do_work(<span style=color:#ff79c6>&amp;</span><span style=color:#ff79c6>mut</span> printer, work);
+<span style=color:#6272a4>// ...
+</span><span style=color:#6272a4></span><span style=color:#8be9fd;font-style:italic>let</span> outbuf <span style=color:#ff79c6>=</span> printer.into_inner();
+<span style=color:#ff79c6>if</span> <span style=color:#ff79c6>!</span>outbuf.get_ref().is_empty() {
+    <span style=color:#8be9fd;font-style:italic>let</span> <span style=color:#ff79c6>mut</span> out <span style=color:#ff79c6>=</span> self.out.lock().unwrap();
+    out.write(<span style=color:#ff79c6>&amp;</span>outbuf);
+}
+self.outbuf <span style=color:#ff79c6>=</span> <span style=color:#8be9fd;font-style:italic>Some</span>(outbuf);
+</code></pre></div><p>An output buffer is taken from <code>self</code> and passed to a printer. The printer is
+then passed to the worker, that uses it to print the results. So far all the
+output went to the buffer, and not to the actual console. Then, if anything has
+been buffered, lock the output, that is shared across all the workers, and write
+everything. The output buffer is reused in this interesting way: it is kept as
+an <code>Option</code> field inside the <code>MultiWorker</code> itself. For every file, it is taken
+from the option, passed by value to a <code>Printer</code>, and then when the <code>Printer</code> is
+done, put it back in the <code>Option</code>. This allows to keep it mutable and pass it
+around by value without creating it every time.</p><p>The trick used here, to avoid to interleave the prints, is to buffer all the
+matches found in a file into a &ldquo;virtual terminal&rdquo; that doesn&rsquo;t print to the
+console. After the search in that file is done, the output is written in one
+shot, by locking a shared <code>Out</code> object and write the buffer contents to the
+actual console.</p><p><img loading=lazy src=out.svg alt=img></p><p>Let&rsquo;s take a look at the various types involved. The <code>MultiWorker</code> keeps a
+<code>ColoredTerminal</code> instance in its <code>self.outbuf</code> field. Its type depends on the
+platform:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>#[cfg(not(windows))]</span>
+outbuf: <span style=color:#8be9fd;font-style:italic>Option</span><span style=color:#ff79c6>&lt;</span>ColoredTerminal<span style=color:#ff79c6>&lt;</span>term::TerminfoTerminal<span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd;font-style:italic>Vec</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd>u8</span><span style=color:#ff79c6>&gt;&gt;&gt;&gt;</span>,
+<span style=color:#ff79c6>#[cfg(windows)]</span>
+outbuf: <span style=color:#8be9fd;font-style:italic>Option</span><span style=color:#ff79c6>&lt;</span>ColoredTerminal<span style=color:#ff79c6>&lt;</span>WindowsBuffer<span style=color:#ff79c6>&gt;&gt;</span>,
+</code></pre></div><p>The <code>self.out</code> is the same in all the platforms:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#8be9fd;font-style:italic>let</span> out: <span style=color:#50fa7b>Arc</span><span style=color:#ff79c6>&lt;</span>Mutex<span style=color:#ff79c6>&lt;</span>Out<span style=color:#ff79c6>&gt;&gt;</span>;
+</code></pre></div><p>As you can see, it can be shared and mutated by multiple threads, because it is
+wrapped in a <code>Mutex</code> and an <code>Arc</code>. Inside an <code>Out</code> instance, there is the
+terminal used to write directly to the console:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>#[cfg(not(windows))]</span>
+<span style=color:#8be9fd;font-style:italic>let</span> term: <span style=color:#50fa7b>ColoredTerminal</span><span style=color:#ff79c6>&lt;</span>term::TerminfoTerminal<span style=color:#ff79c6>&lt;</span>io::BufWriter<span style=color:#ff79c6>&lt;</span>io::Stdout<span style=color:#ff79c6>&gt;&gt;&gt;</span>;
+<span style=color:#ff79c6>#[cfg(windows)]</span>
+<span style=color:#8be9fd;font-style:italic>let</span> term: <span style=color:#50fa7b>ColoredTerminal</span><span style=color:#ff79c6>&lt;</span>WinConsole<span style=color:#ff79c6>&lt;</span>io::Stdout<span style=color:#ff79c6>&gt;&gt;</span>;
+</code></pre></div><p>A <code>ColoredTerminal</code> that refers to a <code>TerminfoTerminal</code> on Linux, and to a
+<code>WinConsole</code> on Windows. They are both structs defined in the <a href=https://crates.io/crates/term>term
+crate</a>.</p><p>But let&rsquo;s step back a and describe all these types a little bit better. The
+<code>Searcher</code> uses a <code>Printer</code> whenever a match is found and the output is enabled.
+The <code>Printer</code> is defined in the <code>printer</code> module and it encapsulates the general
+output logic. It knows how to print a match, given some options, and forwards
+the writes to an inner <code>Terminal</code> type.</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>struct</span> <span style=color:#50fa7b>Printer</span><span style=color:#ff79c6>&lt;</span>W<span style=color:#ff79c6>&gt;</span> {
+    wtr: <span style=color:#50fa7b>W</span>,
+    has_printed: <span style=color:#8be9fd>bool</span>,
+    column: <span style=color:#8be9fd>bool</span>,
+    context_separator: <span style=color:#8be9fd;font-style:italic>Vec</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd>u8</span><span style=color:#ff79c6>&gt;</span>,
+    eol: <span style=color:#8be9fd>u8</span>,
+    file_separator: <span style=color:#8be9fd;font-style:italic>Option</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd;font-style:italic>Vec</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd>u8</span><span style=color:#ff79c6>&gt;&gt;</span>,
+    heading: <span style=color:#8be9fd>bool</span>,
+    line_per_match: <span style=color:#8be9fd>bool</span>,
+    null: <span style=color:#8be9fd>bool</span>,
+    replace: <span style=color:#8be9fd;font-style:italic>Option</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd;font-style:italic>Vec</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd>u8</span><span style=color:#ff79c6>&gt;&gt;</span>,
+    with_filename: <span style=color:#8be9fd>bool</span>,
+    color_choice: <span style=color:#50fa7b>ColorChoice</span>
+}
+</code></pre></div><p>Note that I took the comments out to make it shorter. As you can see, there is a
+generic writer <code>W</code> (that is taken by value) and a lot of other options. This
+generic parameter is expected to implement
+<a href=https://docs.rs/term/0.4.4/term/trait.Terminal.html>term::Terminal</a> and
+<code>Send</code>, as you can see in the implementation:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>impl</span><span style=color:#ff79c6>&lt;</span>W: <span style=color:#50fa7b>Terminal</span> <span style=color:#ff79c6>+</span> <span style=color:#8be9fd;font-style:italic>Send</span><span style=color:#ff79c6>&gt;</span> Printer<span style=color:#ff79c6>&lt;</span>W<span style=color:#ff79c6>&gt;</span> {
+    <span style=color:#6272a4>// printer implementation
+</span><span style=color:#6272a4></span>}
+</code></pre></div><p>The struct uses the builder pattern again, but in a slightly different flavor.
+The <code>new</code> method takes only a <code>Terminal</code> and sets all the options with a default
+value. To change them, the user needs to call the various builder methods,
+directly on the <code>Printer</code> itself, not on another builder helper. For example:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>heading</span>(<span style=color:#ff79c6>mut</span> self, yes: <span style=color:#8be9fd>bool</span>) -&gt; <span style=color:#50fa7b>Printer</span><span style=color:#ff79c6>&lt;</span>W<span style=color:#ff79c6>&gt;</span> {
+    self.heading <span style=color:#ff79c6>=</span> yes;
+    self
+}
+</code></pre></div><p>takes <code>self</code> by mutable value and, after changing the <code>heading</code> option, returns
+<code>self</code> by value again.</p><p>The implementation is simple. The public interface provides some methods to
+print the various match components, like the path, the context separator and the
+line contents. The only thing that is still not clear to me is why the <code>Send</code>
+trait is also needed, since I don&rsquo;t see any threading in the struct
+implementation, and all the print methods require a mutable <code>self</code>, e.g.:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>context_separate</span>(<span style=color:#ff79c6>&amp;</span><span style=color:#ff79c6>mut</span> self) {
+    <span style=color:#6272a4>// N.B. We can&#39;t use `write` here because of borrowing restrictions.
+</span><span style=color:#6272a4></span>    <span style=color:#ff79c6>if</span> self.context_separator.is_empty() {
+        <span style=color:#ff79c6>return</span>;
+    }
+    self.has_printed <span style=color:#ff79c6>=</span> <span style=color:#ff79c6>true</span>;
+    <span style=color:#8be9fd;font-style:italic>let</span> _ <span style=color:#ff79c6>=</span> self.wtr.write_all(<span style=color:#ff79c6>&amp;</span>self.context_separator);
+    <span style=color:#8be9fd;font-style:italic>let</span> _ <span style=color:#ff79c6>=</span> self.wtr.write_all(<span style=color:#ff79c6>&amp;</span>[self.eol]);
+}
+</code></pre></div><p>In any case, the implementation is more or less straight forward, and in the end
+all the writes are directed to the inner <code>Terminal</code>.</p><p>In the Linux case, the <code>Terminal</code> is the default one provided by the <code>term</code>
+crate itself:
+<a href=https://docs.rs/term/0.4.4/term/terminfo/struct.TerminfoTerminal.html>TerminfoTerminal</a>.
+On Windows <code>ripgrep</code> provides a custom implementation, since the coloring needs
+a special treatment, to avoid performance hurt:</p><pre><code>This particular implementation is a bit idiosyncratic, and the &quot;in-memory&quot;
+specification is to blame. In particular, on Windows, coloring requires
+communicating with the console synchronously as data is written to stdout.
+This is anathema to how ripgrep fundamentally works: by writing search results
+to intermediate thread local buffers in order to maximize parallelism.
+
+Eliminating parallelism on Windows isn't an option, because that would negate
+a tremendous performance benefit just for coloring.
+
+We've worked around this by providing an implementation of `term::Terminal`
+that records precisely where a color or a reset should be invoked, according
+to a byte offset in the in memory buffer. When the buffer is actually printed,
+we copy the bytes from the buffer to stdout incrementally while invoking the
+corresponding console APIs for coloring at the right location.
+</code></pre><p>The implementation is provided by <code>WindowsBuffer</code>:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#f1fa8c>/// An in-memory buffer that provides Windows console coloring.
+</span><span style=color:#f1fa8c></span><span style=color:#ff79c6>#[derive(Clone, Debug)]</span>
+<span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>struct</span> <span style=color:#50fa7b>WindowsBuffer</span> {
+    buf: <span style=color:#8be9fd;font-style:italic>Vec</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd>u8</span><span style=color:#ff79c6>&gt;</span>,
+    pos: <span style=color:#8be9fd>usize</span>,
+    colors: <span style=color:#8be9fd;font-style:italic>Vec</span><span style=color:#ff79c6>&lt;</span>WindowsColor<span style=color:#ff79c6>&gt;</span>,
+}
+
+<span style=color:#f1fa8c>/// A color associated with a particular location in a buffer.
+</span><span style=color:#f1fa8c></span><span style=color:#ff79c6>#[derive(Clone, Debug)]</span>
+<span style=color:#ff79c6>struct</span> <span style=color:#50fa7b>WindowsColor</span> {
+    pos: <span style=color:#8be9fd>usize</span>,
+    opt: <span style=color:#50fa7b>WindowsOption</span>,
+}
+
+<span style=color:#f1fa8c>/// A color or reset directive that can be translated into an instruction to
+</span><span style=color:#f1fa8c>/// the Windows console.
+</span><span style=color:#f1fa8c></span><span style=color:#ff79c6>#[derive(Clone, Debug)]</span>
+<span style=color:#ff79c6>enum</span> <span style=color:#50fa7b>WindowsOption</span> {
+    Foreground(Color),
+    Background(Color),
+    Reset,
+}
+</code></pre></div><p>This struct implements <code>terminfo::Terminal</code> as we said before, and it contains a
+buffer of characters to print, a position on the buffer itself, and a vector of
+colors and positions. Whenever the write is called, the output is buffered in
+<code>self.buf</code>:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>impl</span> io::Write <span style=color:#ff79c6>for</span> WindowsBuffer {
+    <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>write</span>(<span style=color:#ff79c6>&amp;</span><span style=color:#ff79c6>mut</span> self, buf: <span style=color:#ff79c6>&amp;</span>[<span style=color:#8be9fd>u8</span>]) -&gt; <span style=color:#50fa7b>io</span>::<span style=color:#8be9fd;font-style:italic>Result</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd>usize</span><span style=color:#ff79c6>&gt;</span> {
+        <span style=color:#8be9fd;font-style:italic>let</span> n <span style=color:#ff79c6>=</span> <span style=color:#ff79c6>try</span><span style=color:#ff79c6>!</span>(self.buf.write(buf));
+        self.pos <span style=color:#ff79c6>+=</span> n;
+        <span style=color:#8be9fd;font-style:italic>Ok</span>(n)
+    }
+
+    <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>flush</span>(<span style=color:#ff79c6>&amp;</span><span style=color:#ff79c6>mut</span> self) -&gt; <span style=color:#50fa7b>io</span>::<span style=color:#8be9fd;font-style:italic>Result</span><span style=color:#ff79c6>&lt;</span>()<span style=color:#ff79c6>&gt;</span> {
+        <span style=color:#8be9fd;font-style:italic>Ok</span>(())
+    }
+}
+</code></pre></div><p>and whenever a coloring option is passed, it is pushed into the <code>colors</code> vector,
+along with the current position:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>impl</span> Terminal <span style=color:#ff79c6>for</span> WindowsBuffer {
+    <span style=color:#ff79c6>type</span> <span style=color:#50fa7b>Output</span> <span style=color:#ff79c6>=</span> <span style=color:#8be9fd;font-style:italic>Vec</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd>u8</span><span style=color:#ff79c6>&gt;</span>;
+
+    <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>fg</span>(<span style=color:#ff79c6>&amp;</span><span style=color:#ff79c6>mut</span> self, fg: <span style=color:#50fa7b>Color</span>) -&gt; <span style=color:#50fa7b>term</span>::<span style=color:#8be9fd;font-style:italic>Result</span><span style=color:#ff79c6>&lt;</span>()<span style=color:#ff79c6>&gt;</span> {
+        self.push(WindowsOption::Foreground(fg));
+        <span style=color:#8be9fd;font-style:italic>Ok</span>(())
+    }
+    <span style=color:#6272a4>// ...
+</span><span style=color:#6272a4></span>}
+</code></pre></div><p>Then, when the higher level logic decides it&rsquo;s time to print everything, the
+<code>print_stdout</code> is called, passing another terminal (the real one, linked with
+the console):</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#f1fa8c>/// Print the contents to the given terminal.
+</span><span style=color:#f1fa8c></span><span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>print_stdout</span><span style=color:#ff79c6>&lt;</span>T: <span style=color:#50fa7b>Terminal</span> <span style=color:#ff79c6>+</span> <span style=color:#8be9fd;font-style:italic>Send</span><span style=color:#ff79c6>&gt;</span>(<span style=color:#ff79c6>&amp;</span>self, tt: <span style=color:#ff79c6>&amp;</span><span style=color:#50fa7b>mut</span> T) {
+    <span style=color:#ff79c6>if</span> <span style=color:#ff79c6>!</span>tt.supports_color() {
+        <span style=color:#8be9fd;font-style:italic>let</span> _ <span style=color:#ff79c6>=</span> tt.write_all(<span style=color:#ff79c6>&amp;</span>self.buf);
+        <span style=color:#8be9fd;font-style:italic>let</span> _ <span style=color:#ff79c6>=</span> tt.flush();
+        <span style=color:#ff79c6>return</span>;
+    }
+    <span style=color:#8be9fd;font-style:italic>let</span> <span style=color:#ff79c6>mut</span> last <span style=color:#ff79c6>=</span> <span style=color:#bd93f9>0</span>;
+    <span style=color:#ff79c6>for</span> col <span style=color:#ff79c6>in</span> <span style=color:#ff79c6>&amp;</span>self.colors {
+        <span style=color:#8be9fd;font-style:italic>let</span> _ <span style=color:#ff79c6>=</span> tt.write_all(<span style=color:#ff79c6>&amp;</span>self.buf[last..col.pos]);
+        <span style=color:#ff79c6>match</span> col.opt {
+            WindowsOption::Foreground(c) <span style=color:#ff79c6>=&gt;</span> {
+                <span style=color:#8be9fd;font-style:italic>let</span> _ <span style=color:#ff79c6>=</span> tt.fg(c);
+            }
+            WindowsOption::Background(c) <span style=color:#ff79c6>=&gt;</span> {
+                <span style=color:#8be9fd;font-style:italic>let</span> _ <span style=color:#ff79c6>=</span> tt.bg(c);
+            }
+            WindowsOption::Reset <span style=color:#ff79c6>=&gt;</span> {
+                <span style=color:#8be9fd;font-style:italic>let</span> _ <span style=color:#ff79c6>=</span> tt.reset();
+            }
+        }
+        last <span style=color:#ff79c6>=</span> col.pos;
+    }
+    <span style=color:#8be9fd;font-style:italic>let</span> _ <span style=color:#ff79c6>=</span> tt.write_all(<span style=color:#ff79c6>&amp;</span>self.buf[last..]);
+    <span style=color:#8be9fd;font-style:italic>let</span> _ <span style=color:#ff79c6>=</span> tt.flush();
+}
+</code></pre></div><p>Here, if the terminal does not support coloring, there is nothing special to do,
+and all the buffer contents are written. Otherwise, for every color option, it
+writes the buffer contents until the recorded position for that option, and than
+it applies the option. This is repeated until the end of the buffer.</p><p>The terminal is not used as is by the higher level logic, but wrapped inside a
+<code>ColoredTerminal</code> instance:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>#[derive(Clone, Debug)]</span>
+<span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>enum</span> <span style=color:#50fa7b>ColoredTerminal</span><span style=color:#ff79c6>&lt;</span>T: <span style=color:#50fa7b>Terminal</span> <span style=color:#ff79c6>+</span> <span style=color:#8be9fd;font-style:italic>Send</span><span style=color:#ff79c6>&gt;</span> {
+    Colored(T),
+    NoColor(T::Output),
+}
+</code></pre></div><p>The purpose of this type is simple: determine if the current terminal supports
+coloring, and if so use it. If not, just drop the terminal and use its internal
+writer type. Determine color support is a costly operation, so it&rsquo;s done only
+once, and the result is cached in a static variable, with the help of the
+<a href>lazy_static</a> crate:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust>lazy_static<span style=color:#ff79c6>!</span> {
+    <span style=color:#6272a4>// Only pay for parsing the terminfo once.
+</span><span style=color:#6272a4></span>    <span style=color:#ff79c6>static</span> <span style=color:#ff79c6>ref</span> TERMINFO: <span style=color:#8be9fd;font-style:italic>Option</span><span style=color:#ff79c6>&lt;</span>TermInfo<span style=color:#ff79c6>&gt;</span> <span style=color:#ff79c6>=</span> {
+        <span style=color:#ff79c6>match</span> TermInfo::from_env() {
+            <span style=color:#8be9fd;font-style:italic>Ok</span>(info) <span style=color:#ff79c6>=&gt;</span> <span style=color:#8be9fd;font-style:italic>Some</span>(info),
+            <span style=color:#8be9fd;font-style:italic>Err</span>(err) <span style=color:#ff79c6>=&gt;</span> {
+                debug<span style=color:#ff79c6>!</span>(<span style=color:#f1fa8c>&#34;error loading terminfo for coloring: {}&#34;</span>, err);
+                <span style=color:#8be9fd;font-style:italic>None</span>
+            }
+        }
+    };
+}
+</code></pre></div><p>The type then implements some specialized constructors for a bunch of types:</p><ul><li><code>WindowsBuffer</code>;</li><li><code>WinConsole&lt;io::Stdout></code>;</li><li>and the one for the generic writer <code>W: io::Write + Send</code>.</li></ul><p>If the terminal then supports coloring, it uses the <code>Colored(T)</code> enum value
+(where <code>T</code> is <code>T: Terminal + Send</code>). In this case the <code>ColoredTerminal</code> instance
+contains a <code>Terminal</code>. In the other case, the <code>NoColor(T::Output)</code> value is
+selected and a plain <code>io::Write</code> is used. <code>ColoredTerminal</code> then implements
+<code>Terminal</code> itself in this way:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>impl</span><span style=color:#ff79c6>&lt;</span>T: <span style=color:#50fa7b>Terminal</span> <span style=color:#ff79c6>+</span> <span style=color:#8be9fd;font-style:italic>Send</span><span style=color:#ff79c6>&gt;</span> term::Terminal <span style=color:#ff79c6>for</span> ColoredTerminal<span style=color:#ff79c6>&lt;</span>T<span style=color:#ff79c6>&gt;</span> {
+    <span style=color:#ff79c6>type</span> <span style=color:#50fa7b>Output</span> <span style=color:#ff79c6>=</span> T::Output;
+
+    <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>fg</span>(<span style=color:#ff79c6>&amp;</span><span style=color:#ff79c6>mut</span> self, fg: <span style=color:#50fa7b>term</span>::color::Color) -&gt; <span style=color:#50fa7b>term</span>::<span style=color:#8be9fd;font-style:italic>Result</span><span style=color:#ff79c6>&lt;</span>()<span style=color:#ff79c6>&gt;</span> {
+        self.map_result(<span style=color:#ff79c6>|</span>w<span style=color:#ff79c6>|</span> w.fg(fg))
+    }
+    <span style=color:#6272a4>// other very similar implementations...
+</span><span style=color:#6272a4></span>}
+</code></pre></div><p>The intended behavior here is to forward the function to the inner terminal, if
+present, or return an error. A possible solution would have been to <code>match self</code>
+in this way:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>match</span> <span style=color:#ff79c6>*</span>self {
+    ColoredTerminal::Colored(<span style=color:#ff79c6>ref</span> <span style=color:#ff79c6>mut</span> w) <span style=color:#ff79c6>=&gt;</span> w.fg(fg),
+    ColoredTerminal::NoColor(_) <span style=color:#ff79c6>=&gt;</span> <span style=color:#8be9fd;font-style:italic>Err</span>(term::Error::NotSupported),
+}
+</code></pre></div><p>for all the functions. The solution adopted here is more elegant, as it
+Implements a <code>map_result</code> that applies the given function to the inner
+<code>Terminal</code> if it&rsquo;s present and returns an error otherwise:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>impl</span><span style=color:#ff79c6>&lt;</span>T: <span style=color:#50fa7b>Terminal</span> <span style=color:#ff79c6>+</span> <span style=color:#8be9fd;font-style:italic>Send</span><span style=color:#ff79c6>&gt;</span> ColoredTerminal<span style=color:#ff79c6>&lt;</span>T<span style=color:#ff79c6>&gt;</span> {
+    <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>map_result</span><span style=color:#ff79c6>&lt;</span>F<span style=color:#ff79c6>&gt;</span>(<span style=color:#ff79c6>&amp;</span><span style=color:#ff79c6>mut</span> self, <span style=color:#ff79c6>mut</span> f: <span style=color:#50fa7b>F</span>) -&gt; <span style=color:#50fa7b>term</span>::<span style=color:#8be9fd;font-style:italic>Result</span><span style=color:#ff79c6>&lt;</span>()<span style=color:#ff79c6>&gt;</span>
+        <span style=color:#ff79c6>where</span> F: <span style=color:#8be9fd;font-style:italic>FnMut</span>(<span style=color:#ff79c6>&amp;</span><span style=color:#ff79c6>mut</span> T) -&gt; <span style=color:#50fa7b>term</span>::<span style=color:#8be9fd;font-style:italic>Result</span><span style=color:#ff79c6>&lt;</span>()<span style=color:#ff79c6>&gt;</span>
+    {
+        <span style=color:#ff79c6>match</span> <span style=color:#ff79c6>*</span>self {
+            ColoredTerminal::Colored(<span style=color:#ff79c6>ref</span> <span style=color:#ff79c6>mut</span> w) <span style=color:#ff79c6>=&gt;</span> f(w),
+            ColoredTerminal::NoColor(_) <span style=color:#ff79c6>=&gt;</span> <span style=color:#8be9fd;font-style:italic>Err</span>(term::Error::NotSupported),
+        }
+    }
+}
+</code></pre></div><p>In this way the whole <code>Terminal</code> implementation is just a bunch of one-liners.</p><p>The missing piece of this puzzle is the <code>Out</code> struct. The comment on top of the
+struct speaks for itself:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#f1fa8c>/// Out controls the actual output of all search results for a particular file
+</span><span style=color:#f1fa8c>/// to the end user.
+</span><span style=color:#f1fa8c>///
+</span><span style=color:#f1fa8c>/// (The difference between Out and Printer is that a Printer works with
+</span><span style=color:#f1fa8c>/// individual search results where as Out works with search results for each
+</span><span style=color:#f1fa8c>/// file as a whole. For example, it knows when to print a file separator.)
+</span><span style=color:#f1fa8c></span><span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>struct</span> <span style=color:#50fa7b>Out</span> {
+    <span style=color:#ff79c6>#[cfg(not(windows))]</span>
+    term: <span style=color:#50fa7b>ColoredTerminal</span><span style=color:#ff79c6>&lt;</span>term::TerminfoTerminal<span style=color:#ff79c6>&lt;</span>io::BufWriter<span style=color:#ff79c6>&lt;</span>io::Stdout<span style=color:#ff79c6>&gt;&gt;&gt;</span>,
+    <span style=color:#ff79c6>#[cfg(windows)]</span>
+    term: <span style=color:#50fa7b>ColoredTerminal</span><span style=color:#ff79c6>&lt;</span>WinConsole<span style=color:#ff79c6>&lt;</span>io::Stdout<span style=color:#ff79c6>&gt;&gt;</span>,
+    printed: <span style=color:#8be9fd>bool</span>,
+    file_separator: <span style=color:#8be9fd;font-style:italic>Option</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd;font-style:italic>Vec</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd>u8</span><span style=color:#ff79c6>&gt;&gt;</span>,
+}
+</code></pre></div><p>The implementation is straightforward: whenever <code>write</code> is called with a
+<code>ColoredTerminal</code> as a buffer, it prints a separator (except for the first
+file), then prints the buffer contents and then flushes the terminal. Here is
+the Unix version:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=color:#ff79c6>#[cfg(not(windows))]</span>
+<span style=color:#ff79c6>pub</span> <span style=color:#ff79c6>fn</span> <span style=color:#50fa7b>write</span>(<span style=color:#ff79c6>&amp;</span><span style=color:#ff79c6>mut</span> self, buf: <span style=color:#ff79c6>&amp;</span><span style=color:#50fa7b>ColoredTerminal</span><span style=color:#ff79c6>&lt;</span>term::TerminfoTerminal<span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd;font-style:italic>Vec</span><span style=color:#ff79c6>&lt;</span><span style=color:#8be9fd>u8</span><span style=color:#ff79c6>&gt;&gt;&gt;</span>) {
+    self.write_sep();
+    <span style=color:#ff79c6>match</span> <span style=color:#ff79c6>*</span>buf {
+        ColoredTerminal::Colored(<span style=color:#ff79c6>ref</span> tt) <span style=color:#ff79c6>=&gt;</span> {
+            <span style=color:#8be9fd;font-style:italic>let</span> _ <span style=color:#ff79c6>=</span> self.term.write_all(tt.get_ref());
+        }
+        ColoredTerminal::NoColor(<span style=color:#ff79c6>ref</span> buf) <span style=color:#ff79c6>=&gt;</span> {
+            <span style=color:#8be9fd;font-style:italic>let</span> _ <span style=color:#ff79c6>=</span> self.term.write_all(buf);
+        }
+    }
+    self.write_done();
+}
+</code></pre></div><p>A very similar but not exactly equal version is provided for Windows, so there
+is some code duplication. It would be better to abstract these details in
+<code>ColoredTerminal</code>, providing a <code>write_all</code> method there, or in alternative, to
+introduce a new trait used by <code>ColoredTerminal</code> itself that does the same and
+than make <code>TerminfoTerminal</code>, <code>WindowsBuffer</code> and <code>WindowsConsole</code> to implement
+it.</p><h2 id=concluding-remarks>Concluding remarks<a hidden class=anchor aria-hidden=true href=#concluding-remarks>#</a></h2><p>In this post we have done a <code>ripgrep</code> code review, with the main focus on the
+design decisions and the interesting implementation solutions. The review is far
+from being complete, but my goal was to look at the patterns and break them
+down, in hope that they can be used in similar contexts by other projects.</p><p>In general the code is very clean, a part certain functions that would benefit
+from some more comments. There is however an extensive usage of
+<code>#[inline(always)]</code> and <code>#[inline(never)]</code> directives in the code, that I could
+not explain. I wonder if they have been added after profiling and if so, why the
+compiler have failed to identify them correctly. A possible use case is
+intra-crate inlining, but compiling with <code>rustc -C lto</code> already allows to inline
+everything (by slowing down compilation).<sup id=fnref:5><a href=#fn:5 class=footnote-ref role=doc-noteref>5</a></sup></p><p>In any case, I found the <code>ripgrep</code> crate a beautiful piece of software, from
+which I could learn a lot. I hope I was able to convey this beauty with this
+post.</p><h3 id=feedback>Feedback<a hidden class=anchor aria-hidden=true href=#feedback>#</a></h3><p><a href=https://twitter.com/burntsushi5>Andrew</a> posted his feedback on Twitter and on
+<a href="https://news.ycombinator.com/item?id=13097556">HN</a>. I report his comment here,
+because it&rsquo;s relevant for some of the remarks I made:</p><blockquote><p>ripgrep author here! This is a great review, thanks for doing it! I&rsquo;d like to
+respond to a few of the bad things pointed out. :P</p><p>The search code is indeed in a less than ideal state. I&rsquo;ve mostly avoided
+refactoring it because I want to move it to its own separate crate. I&rsquo;ve been
+steadily doing this for other things. Namely, ripgrep used to be a single main
+crate plus a small regex handling crate (grep), but now it&rsquo;s several: globset,
+grep, ignore, termcolor and wincolor. I&rsquo;d like to roll the search code into the
+grep crate so that others can use it. Once that&rsquo;s done, ripgrep proper will be a
+pretty small, limited mostly to argv handling and output handling.</p><p>I do sometimes get overzealous with inline(always) and inline(never). Both are
+almost always a result of trying things while profiling, and then forgetting to
+remove them. If you look closely, most of them are in the core searching code
+where performance is quite important!</p><p>Finally, this code review was done while I was in the middle of moving more of
+ripgrep code out into the `ignore` and `termcolor` crates. The `ignore` crate
+does all the gitignore handling (which is quite tricky and is now being used by
+the <a href=https://github.com/Aaronepower/tokei>tokei</a> project) and provides a parallel recursive directory iterator, which
+made ripgrep even faster! The `termcolor` crate handles cross platform coloring
+shenanigans, including Windows consoles and mintty. It wasn&rsquo;t fun: <a href=https://github.com/BurntSushi/ripgrep/issues/94#issuecomment>issue #94</a>…
+— The author did a great job reviewing the previous solution I used for colors
+though, and was something I really wasn&rsquo;t proud of!</p><p>— <cite>burntsushi@ on <a href="https://news.ycombinator.com/item?id=13097556">HN</a></cite></p></blockquote><p>I have corrected a typo, thanks <a href=https://twitter.com/toqueteos>@toquetos</a>.</p><p>There is some discussion going on in the
+<a href=https://m.reddit.com/r/rust/comments/5gayqw/ripgrep_code_review/>r/rust</a>
+subreddit, and on <a href="https://news.ycombinator.com/item?id=13097125">HN</a>. Thank you
+guys for the feedback and the kind words, and thanks to Andrew for his great
+work.</p><p>That&rsquo;s all folks.</p><section class=footnotes role=doc-endnotes><hr><ol><li id=fn:1 role=doc-endnote><p>In this case <code>Box&lt;Error></code>, since a recursive type cannot embed itself,
+otherwise it would be impossible to compute the size of the type. <a href=#fnref:1 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:2 role=doc-endnote><p>You can find a good reference on the error handling topic in <a href=https://doc.rust-lang.org/stable/book/error-handling.html>the Rust
+book</a>. <a href=#fnref:2 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:3 role=doc-endnote><p>Please bear in mind that I have taken out the comments to make it
+shorter. <a href=#fnref:3 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:4 role=doc-endnote><p>Generally this happens when searching into a single huge file. <a href=#fnref:4 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:5 role=doc-endnote><p>See <a href=https://internals.rust-lang.org/t/when-should-i-use-inline/598>When should I use inline</a>. <a href=#fnref:5 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li></ol></section></div><footer class=post-footer><ul class=post-tags><li><a href=https://blog.mbrt.dev/tags/rust/>rust</a></li><li><a href=https://blog.mbrt.dev/tags/code-review/>code-review</a></li></ul><nav class=paginav><a class=prev href=https://blog.mbrt.dev/posts/antifurto/><span class=title>« Prev Page</span><br><span>Antifurto: home made security camera</span></a>
+<a class=next href=https://blog.mbrt.dev/posts/keygen/><span class=title>Next Page »</span><br><span>Keygenning with KLEE [doar-e]</span></a></nav><div class=share-buttons><a target=_blank rel="noopener noreferrer" aria-label="share Ripgrep code review on twitter" href="https://twitter.com/intent/tweet/?text=Ripgrep%20code%20review&url=https%3a%2f%2fblog.mbrt.dev%2fposts%2fripgrep%2f&hashtags=rust%2ccode-review"><svg viewBox="0 0 512 512"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H62.554c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892zM195.519 424.544c135.939.0 210.268-112.643 210.268-210.268.0-3.218.0-6.437-.153-9.502 14.406-10.421 26.973-23.448 36.935-38.314-13.18 5.824-27.433 9.809-42.452 11.648 15.326-9.196 26.973-23.602 32.49-40.92-14.252 8.429-30.038 14.56-46.896 17.931-13.487-14.406-32.644-23.295-53.946-23.295-40.767.0-73.87 33.104-73.87 73.87.0 5.824.613 11.494 1.992 16.858-61.456-3.065-115.862-32.49-152.337-77.241-6.284 10.881-9.962 23.601-9.962 37.088.0 25.594 13.027 48.276 32.95 61.456-12.107-.307-23.448-3.678-33.41-9.196v.92c0 35.862 25.441 65.594 59.311 72.49-6.13 1.686-12.72 2.606-19.464 2.606-4.751.0-9.348-.46-13.946-1.38 9.349 29.426 36.628 50.728 68.965 51.341-25.287 19.771-57.164 31.571-91.8 31.571-5.977.0-11.801-.306-17.625-1.073 32.337 21.15 71.264 33.41 112.95 33.41z"/></svg></a><a target=_blank rel="noopener noreferrer" aria-label="share Ripgrep code review on linkedin" href="https://www.linkedin.com/shareArticle?mini=true&url=https%3a%2f%2fblog.mbrt.dev%2fposts%2fripgrep%2f&title=Ripgrep%20code%20review&summary=Ripgrep%20code%20review&source=https%3a%2f%2fblog.mbrt.dev%2fposts%2fripgrep%2f"><svg viewBox="0 0 512 512"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H62.554c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892zM160.461 423.278V197.561h-75.04v225.717h75.04zm270.539.0V293.839c0-69.333-37.018-101.586-86.381-101.586-39.804.0-57.634 21.891-67.617 37.266v-31.958h-75.021c.995 21.181.0 225.717.0 225.717h75.02V297.222c0-6.748.486-13.492 2.474-18.315 5.414-13.475 17.767-27.434 38.494-27.434 27.135.0 38.007 20.707 38.007 51.037v120.768H431zM123.448 88.722C97.774 88.722 81 105.601 81 127.724c0 21.658 16.264 39.002 41.455 39.002h.484c26.165.0 42.452-17.344 42.452-39.002-.485-22.092-16.241-38.954-41.943-39.002z"/></svg></a><a target=_blank rel="noopener noreferrer" aria-label="share Ripgrep code review on reddit" href="https://reddit.com/submit?url=https%3a%2f%2fblog.mbrt.dev%2fposts%2fripgrep%2f&title=Ripgrep%20code%20review"><svg viewBox="0 0 512 512"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H62.554c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892zM446 265.638c0-22.964-18.616-41.58-41.58-41.58-11.211.0-21.361 4.457-28.841 11.666-28.424-20.508-67.586-33.757-111.204-35.278l18.941-89.121 61.884 13.157c.756 15.734 13.642 28.29 29.56 28.29 16.407.0 29.706-13.299 29.706-29.701.0-16.403-13.299-29.702-29.706-29.702-11.666.0-21.657 6.792-26.515 16.578l-69.105-14.69c-1.922-.418-3.939-.042-5.585 1.036-1.658 1.073-2.811 2.761-3.224 4.686l-21.152 99.438c-44.258 1.228-84.046 14.494-112.837 35.232-7.468-7.164-17.589-11.591-28.757-11.591-22.965.0-41.585 18.616-41.585 41.58.0 16.896 10.095 31.41 24.568 37.918-.639 4.135-.99 8.328-.99 12.576.0 63.977 74.469 115.836 166.33 115.836s166.334-51.859 166.334-115.836c0-4.218-.347-8.387-.977-12.493 14.564-6.47 24.735-21.034 24.735-38.001zM326.526 373.831c-20.27 20.241-59.115 21.816-70.534 21.816-11.428.0-50.277-1.575-70.522-21.82-3.007-3.008-3.007-7.882.0-10.889 3.003-2.999 7.882-3.003 10.885.0 12.777 12.781 40.11 17.317 59.637 17.317 19.522.0 46.86-4.536 59.657-17.321 3.016-2.999 7.886-2.995 10.885.008 3.008 3.011 3.003 7.882-.008 10.889zm-5.23-48.781c-16.373.0-29.701-13.324-29.701-29.698.0-16.381 13.328-29.714 29.701-29.714 16.378.0 29.706 13.333 29.706 29.714.0 16.374-13.328 29.698-29.706 29.698zM160.91 295.348c0-16.381 13.328-29.71 29.714-29.71 16.369.0 29.689 13.329 29.689 29.71.0 16.373-13.32 29.693-29.689 29.693-16.386.0-29.714-13.32-29.714-29.693z"/></svg></a><a target=_blank rel="noopener noreferrer" aria-label="share Ripgrep code review on facebook" href="https://facebook.com/sharer/sharer.php?u=https%3a%2f%2fblog.mbrt.dev%2fposts%2fripgrep%2f"><svg viewBox="0 0 512 512"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H342.978V319.085h66.6l12.672-82.621h-79.272v-53.617c0-22.603 11.073-44.636 46.58-44.636H425.6v-70.34s-32.71-5.582-63.982-5.582c-65.288.0-107.96 39.569-107.96 111.204v62.971h-72.573v82.621h72.573V512h-191.104c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892z"/></svg></a><a target=_blank rel="noopener noreferrer" aria-label="share Ripgrep code review on whatsapp" href="https://api.whatsapp.com/send?text=Ripgrep%20code%20review%20-%20https%3a%2f%2fblog.mbrt.dev%2fposts%2fripgrep%2f"><svg viewBox="0 0 512 512"><path d="M449.446.0C483.971.0 512 28.03 512 62.554v386.892C512 483.97 483.97 512 449.446 512H62.554c-34.524.0-62.554-28.03-62.554-62.554V62.554c0-34.524 28.029-62.554 62.554-62.554h386.892zm-58.673 127.703c-33.842-33.881-78.847-52.548-126.798-52.568-98.799.0-179.21 80.405-179.249 179.234-.013 31.593 8.241 62.428 23.927 89.612l-25.429 92.884 95.021-24.925c26.181 14.28 55.659 21.807 85.658 21.816h.074c98.789.0 179.206-80.413 179.247-179.243.018-47.895-18.61-92.93-52.451-126.81zM263.976 403.485h-.06c-26.734-.01-52.954-7.193-75.828-20.767l-5.441-3.229-56.386 14.792 15.05-54.977-3.542-5.637c-14.913-23.72-22.791-51.136-22.779-79.287.033-82.142 66.867-148.971 149.046-148.971 39.793.014 77.199 15.531 105.329 43.692 28.128 28.16 43.609 65.592 43.594 105.4-.034 82.149-66.866 148.983-148.983 148.984zm81.721-111.581c-4.479-2.242-26.499-13.075-30.604-14.571-4.105-1.495-7.091-2.241-10.077 2.241-2.986 4.483-11.569 14.572-14.182 17.562-2.612 2.988-5.225 3.364-9.703 1.12-4.479-2.241-18.91-6.97-36.017-22.23C231.8 264.15 222.81 249.484 220.198 245s-.279-6.908 1.963-9.14c2.016-2.007 4.48-5.232 6.719-7.847 2.24-2.615 2.986-4.484 4.479-7.472 1.493-2.99.747-5.604-.374-7.846-1.119-2.241-10.077-24.288-13.809-33.256-3.635-8.733-7.327-7.55-10.077-7.688-2.609-.13-5.598-.158-8.583-.158-2.986.0-7.839 1.121-11.944 5.604-4.105 4.484-15.675 15.32-15.675 37.364.0 22.046 16.048 43.342 18.287 46.332 2.24 2.99 31.582 48.227 76.511 67.627 10.685 4.615 19.028 7.371 25.533 9.434 10.728 3.41 20.492 2.929 28.209 1.775 8.605-1.285 26.499-10.833 30.231-21.295 3.732-10.464 3.732-19.431 2.612-21.298-1.119-1.869-4.105-2.99-8.583-5.232z"/></svg></a><a target=_blank rel="noopener noreferrer" aria-label="share Ripgrep code review on telegram" href="https://telegram.me/share/url?text=Ripgrep%20code%20review&url=https%3a%2f%2fblog.mbrt.dev%2fposts%2fripgrep%2f"><svg viewBox="2 2 28 28"><path d="M26.49 29.86H5.5a3.37 3.37.0 01-2.47-1 3.35 3.35.0 01-1-2.47V5.48A3.36 3.36.0 013 3 3.37 3.37.0 015.5 2h21A3.38 3.38.0 0129 3a3.36 3.36.0 011 2.46V26.37a3.35 3.35.0 01-1 2.47 3.38 3.38.0 01-2.51 1.02zm-5.38-6.71a.79.79.0 00.85-.66L24.73 9.24a.55.55.0 00-.18-.46.62.62.0 00-.41-.17q-.08.0-16.53 6.11a.59.59.0 00-.41.59.57.57.0 00.43.52l4 1.24 1.61 4.83a.62.62.0 00.63.43.56.56.0 00.4-.17L16.54 20l4.09 3A.9.9.0 0021.11 23.15zM13.8 20.71l-1.21-4q8.72-5.55 8.78-5.55c.15.0.23.0.23.16a.18.18.0 010 .06s-2.51 2.3-7.52 6.8z"/></svg></a></div></footer></article></main><footer class=footer><span>&copy; 2021 <a href=https://blog.mbrt.dev/>mbrt blog</a></span>
+<span>&#183;</span>
+<span>Powered by <a href=https://gohugo.io/ rel="noopener noreferrer" target=_blank>Hugo</a></span>
+<span>&#183;</span>
+<span>Theme <a href=https://git.io/hugopapermod rel=noopener target=_blank>PaperMod</a></span></footer><a href=#top aria-label="go to top" title="Go to Top (Alt + G)"><button class=top-link id=top-link type=button accesskey=g><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentcolor"><path d="M12 6H0l6-6z"/></svg></button></a>
+<script>window.onload=function(){localStorage.getItem("menu-scroll-position")&&(document.getElementById('menu').scrollLeft=localStorage.getItem("menu-scroll-position"))};function menu_on_scroll(){localStorage.setItem("menu-scroll-position",document.getElementById('menu').scrollLeft)}document.querySelectorAll('a[href^="#"]').forEach(a=>{a.addEventListener("click",function(b){b.preventDefault();var a=this.getAttribute("href").substr(1);window.matchMedia('(prefers-reduced-motion: reduce)').matches?document.querySelector(`[id='${decodeURIComponent(a)}']`).scrollIntoView():document.querySelector(`[id='${decodeURIComponent(a)}']`).scrollIntoView({behavior:"smooth"}),a==="top"?history.replaceState(null,null," "):history.pushState(null,null,`#${a}`)})})</script><script>var mybutton=document.getElementById("top-link");window.onscroll=function(){document.body.scrollTop>800||document.documentElement.scrollTop>800?(mybutton.style.visibility="visible",mybutton.style.opacity="1"):(mybutton.style.visibility="hidden",mybutton.style.opacity="0")}</script><script>document.getElementById("theme-toggle").addEventListener("click",()=>{document.body.className.includes("dark")?(document.body.classList.remove('dark'),localStorage.setItem("pref-theme",'light')):(document.body.classList.add('dark'),localStorage.setItem("pref-theme",'dark'))})</script></body></html>
