@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!-- Created with Inkscape (http://www.inkscape.org/) -->
-
 <svg
    xmlns:dc="http://purl.org/dc/elements/1.1/"
    xmlns:cc="http://creativecommons.org/ns#"
@@ -14,7 +12,7 @@
    viewBox="0 0 288.00577 181.74915"
    version="1.1"
    id="svg8"
-   inkscape:version="0.92.1 r"
+   inkscape:version="1.0.2 (e86c870879, 2021-01-15)"
    sodipodi:docname="motion-detector.svg">
   <sodipodi:namedview
      id="base"
@@ -24,20 +22,21 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.7"
-     inkscape:cx="96.28368"
+     inkscape:cx="495.56037"
      inkscape:cy="361.21707"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"
-     inkscape:window-width="1920"
-     inkscape:window-height="1016"
+     inkscape:window-width="1440"
+     inkscape:window-height="746"
      inkscape:window-x="0"
      inkscape:window-y="27"
      inkscape:window-maximized="1"
      fit-margin-top="10"
      fit-margin-left="10"
      fit-margin-right="10"
-     fit-margin-bottom="10" />
+     fit-margin-bottom="10"
+     inkscape:document-rotation="0" />
   <defs
      id="defs2">
     <marker
@@ -174,6 +173,18 @@
     </rdf:RDF>
   </metadata>
   <g
+     inkscape:groupmode="layer"
+     id="layer5"
+     inkscape:label="Layer 2">
+    <rect
+       style="fill:#ffffff;stroke-width:0.264583"
+       id="rect1528"
+       width="282.85007"
+       height="176.35966"
+       x="2.4092984"
+       y="3.1125882" />
+  </g>
+  <g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
@@ -224,7 +235,8 @@
            height="317.14285"
            x="541.42859"
            y="142.51968" /></flowRegion><flowPara
-         id="flowPara4544" /></flowRoot>    <circle
+         id="flowPara4544" /></flowRoot>
+    <circle
        style="fill:#fbadb3;fill-opacity:1;fill-rule:evenodd;stroke:#172441;stroke-width:1.41111112;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="path3336"
        cx="29.093801"

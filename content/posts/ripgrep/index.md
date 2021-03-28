@@ -9,9 +9,10 @@ I've been playing around with [Rust](https://www.rust-lang.org) for a year and a
 half, and the best part of it, like many others say, has been the very helpful
 community. There are a lot of online resources that help you to get started: the
 [Rust book](https://doc.rust-lang.org/book/), the
-[Rustonomicon](https://doc.rust-lang.org/nomicon/) and many [blog
-posts](https://this-week-in-rust.org/) and [stack overflow
-questions](http://stackoverflow.com/questions/tagged/rust). After I learned the
+[Rustonomicon](https://doc.rust-lang.org/nomicon/) and many
+[blog posts](https://this-week-in-rust.org/) and
+[stack overflow questions](http://stackoverflow.com/questions/tagged/rust).
+After I learned the
 basics I felt a bit lost though. I couldn't find enough resources for
 intermediate-level-Rustaceans. I'm a C++ developer in my daily job, and so I'm
 used with books like [Effective C++](http://www.aristeia.com/books.html) from
@@ -66,7 +67,7 @@ and without further ado, let's get started.
 expressions, similarly to GNU grep. The tool is split across four crates: the
 main one (`ripgrep`), `ignore`, `grep` and `globset`.
 
-![img](crates.png)
+![img](crates.svg)
 
 The `grep` crate provides line-by-line regex searching from a buffer and it is
 used only by the main crate. The `globset` crate uses regex to perform [glob
@@ -81,9 +82,9 @@ forces you to keep your code scoped. It's easy to create a mess of dependencies
 among the components if everything is in the same crate (or, even worse, in the
 same module). If you instead take a part of your application and try to give it
 a meaning by itself, you'll end up with a more generic, usable and clearer
-interface. Embrace the [Single responsibility
-principle](https://en.wikipedia.org/wiki/Single_responsibility_principle) and
-let it be your guide, like `ripgrep` clearly does.
+interface. Embrace the
+[Single responsibility principle](https://en.wikipedia.org/wiki/Single_responsibility_principle)
+and let it be your guide, like `ripgrep` clearly does.
 
 ## Main
 
@@ -119,7 +120,7 @@ fn run(args: Args) -> Result<u64> {
 The `run` function at first decides if it's worth to spawn threads or not, and
 if so, this is the way it setups the things:
 
-![img](main.png)
+![img](main.svg)
 
 The main thread, controlled by the `run` function digs files from the file
 system, and pushes them into a [deque](https://crates.io/crates/deque). This is
@@ -731,7 +732,7 @@ console. After the search in that file is done, the output is written in one
 shot, by locking a shared `Out` object and write the buffer contents to the
 actual console.
 
-![img](out.png)
+![img](out.svg)
 
 Let's take a look at the various types involved. The `MultiWorker` keeps a
 `ColoredTerminal` instance in its `self.outbuf` field. Its type depends on the
@@ -1143,6 +1144,8 @@ because it's relevant for some of the remarks I made:
 > shenanigans, including Windows consoles and mintty. It wasn't fun: [issue #94](https://github.com/BurntSushi/ripgrep/issues/94#issuecomment)&#x2026;
 > &#x2014; The author did a great job reviewing the previous solution I used for colors
 > though, and was something I really wasn't proud of!
+>
+> — <cite>burntsushi@ on [HN](https://news.ycombinator.com/item?id=13097556)</cite>
 
 I have corrected a typo, thanks [@toquetos](https://twitter.com/toqueteos).
 

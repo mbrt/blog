@@ -124,7 +124,7 @@ There are also other small satellite components and scripts, such as:
 
 You can see below a diagram of the high level architecture:
 
-![img](overview.png)
+![img](overview.svg)
 
 As you can see, the pictures come from the camera module and are processed by
 the `antifurto` main executable. This decides whether to store the pictures on
@@ -144,7 +144,7 @@ The design is heavily based on
 minimize dependencies among components. Well, at least I tried to keep those in
 mind.
 
-![img](hierarchy.png)
+![img](hierarchy.svg)
 
 In the diagram you can see the architecture of the main executable. Each box
 represents a class. I didn't represent all of them, but only the most important.
@@ -365,7 +365,6 @@ stream of pictures.
 
 ## Picture's capture
 
-
 ### MotionDetector
 
 This class uses the [OpenCV](http://opencv.org/) library to examine the pictures
@@ -401,7 +400,7 @@ machine that counts how many consecutive moving frames have been detected. These
 states are used to better control energy saving, picture capture and alarm
 notifications.
 
-![img](motion-detector.png)
+![img](motion-detector.svg)
 
 Every time a transition occurs in this state machine, all the observers are
 notified. It will be up to them to take the right action.
