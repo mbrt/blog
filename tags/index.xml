@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Tags on mbrt blog</title>
+    <link>https://blog.mbrt.dev/tags/</link>
+    <description>Recent content in Tags on mbrt blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <lastBuildDate>Sun, 01 Oct 2017 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>containers</title>
+      <link>https://blog.mbrt.dev/tags/containers/</link>
+      <pubDate>Sun, 01 Oct 2017 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/tags/containers/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>linux</title>
+      <link>https://blog.mbrt.dev/tags/linux/</link>
+      <pubDate>Sun, 01 Oct 2017 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/tags/linux/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>c&#43;&#43;</title>
+      <link>https://blog.mbrt.dev/tags/c&#43;&#43;/</link>
+      <pubDate>Fri, 07 Jul 2017 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/tags/c&#43;&#43;/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>code-review</title>
+      <link>https://blog.mbrt.dev/tags/code-review/</link>
+      <pubDate>Fri, 07 Jul 2017 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/tags/code-review/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>raspberry-pi</title>
+      <link>https://blog.mbrt.dev/tags/raspberry-pi/</link>
+      <pubDate>Fri, 07 Jul 2017 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/tags/raspberry-pi/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>rust</title>
+      <link>https://blog.mbrt.dev/tags/rust/</link>
+      <pubDate>Thu, 01 Dec 2016 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/tags/rust/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>reversing</title>
+      <link>https://blog.mbrt.dev/tags/reversing/</link>
+      <pubDate>Tue, 18 Aug 2015 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/tags/reversing/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

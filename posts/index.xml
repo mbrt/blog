@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on mbrt blog</title>
+    <link>https://blog.mbrt.dev/posts/</link>
+    <description>Recent content in Posts on mbrt blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <lastBuildDate>Sun, 01 Oct 2017 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Demystifying container networking</title>
+      <link>https://blog.mbrt.dev/posts/container-network/</link>
+      <pubDate>Sun, 01 Oct 2017 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/posts/container-network/</guid>
+      <description>Over the last year, at work I had multiple chances to debug how containers work. Recently we had to solve some networking problems a customer had with Kubernetes, and I decided I wanted to know more. Once the problem was solved, I spent more time on investigating what is actually going on under the hood. After seeing the wonderful Eric Chiang and Laurent Bernaille talks, and reading through the very informative posts by Lizzie Dixon and Julia Evans (that I really really recommend), I got enough information about how a container is created and managed.</description>
+    </item>
+    
+    <item>
+      <title>Antifurto: home made security camera</title>
+      <link>https://blog.mbrt.dev/posts/antifurto/</link>
+      <pubDate>Fri, 07 Jul 2017 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/posts/antifurto/</guid>
+      <description>Introduction In February 2014 I had a very unpleasant surprise after coming back home from a weekend in Berlin. Me and my girlfriend found out our apartment upside down because of burglars. We suffered the loss not only of many of our belongings, but worse, of our safety. We didn&amp;rsquo;t feel safe in our home and we didn&amp;rsquo;t feel safe to leave it - not even for half an hour - for the fear to come back and find somebody inside.</description>
+    </item>
+    
+    <item>
+      <title>Ripgrep code review</title>
+      <link>https://blog.mbrt.dev/posts/ripgrep/</link>
+      <pubDate>Thu, 01 Dec 2016 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/posts/ripgrep/</guid>
+      <description>I&amp;rsquo;ve been playing around with Rust for a year and a half, and the best part of it, like many others say, has been the very helpful community. There are a lot of online resources that help you to get started: the Rust book, the Rustonomicon and many blog posts and stack overflow questions. After I learned the basics I felt a bit lost though. I couldn&amp;rsquo;t find enough resources for intermediate-level-Rustaceans.</description>
+    </item>
+    
+    <item>
+      <title>Keygenning with KLEE [doar-e]</title>
+      <link>https://blog.mbrt.dev/posts/keygen/</link>
+      <pubDate>Tue, 18 Aug 2015 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/posts/keygen/</guid>
+      <description>This was published in the Diary of a reverse-engineer as a guest post:
+Keygenning with KLEE</description>
+    </item>
+    
+  </channel>
+</rss>

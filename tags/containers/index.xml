@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>containers on mbrt blog</title>
+    <link>https://blog.mbrt.dev/tags/containers/</link>
+    <description>Recent content in containers on mbrt blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <lastBuildDate>Sun, 01 Oct 2017 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/tags/containers/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Demystifying container networking</title>
+      <link>https://blog.mbrt.dev/posts/container-network/</link>
+      <pubDate>Sun, 01 Oct 2017 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/posts/container-network/</guid>
+      <description>Over the last year, at work I had multiple chances to debug how containers work. Recently we had to solve some networking problems a customer had with Kubernetes, and I decided I wanted to know more. Once the problem was solved, I spent more time on investigating what is actually going on under the hood. After seeing the wonderful Eric Chiang and Laurent Bernaille talks, and reading through the very informative posts by Lizzie Dixon and Julia Evans (that I really really recommend), I got enough information about how a container is created and managed.</description>
+    </item>
+    
+  </channel>
+</rss>
