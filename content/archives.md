@@ -1,4 +1,5 @@
 ---
-type: section
+title: Archive
 layout: "archives"
+summary: "archives"
 ---
