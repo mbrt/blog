@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!-- Created with Inkscape (http://www.inkscape.org/) -->
-
 <svg
    xmlns:dc="http://purl.org/dc/elements/1.1/"
    xmlns:cc="http://creativecommons.org/ns#"
@@ -14,7 +12,7 @@
    viewBox="0 0 430.25412 302.64382"
    version="1.1"
    id="svg8"
-   inkscape:version="0.92.1 r"
+   inkscape:version="1.0.2 (e86c870879, 2021-01-15)"
    sodipodi:docname="hierarchy.svg">
   <defs
      id="defs2">
@@ -662,21 +660,22 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.51843089"
-     inkscape:cx="632.13482"
-     inkscape:cy="607.05647"
+     inkscape:zoom="0.32408672"
+     inkscape:cx="926.31253"
+     inkscape:cy="567.83578"
      inkscape:document-units="mm"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="layer4"
      showgrid="false"
-     inkscape:window-width="1920"
-     inkscape:window-height="1016"
+     inkscape:window-width="1440"
+     inkscape:window-height="746"
      inkscape:window-x="0"
      inkscape:window-y="27"
      inkscape:window-maximized="1"
      fit-margin-top="5"
      fit-margin-left="5"
      fit-margin-right="5"
-     fit-margin-bottom="5" />
+     fit-margin-bottom="5"
+     inkscape:document-rotation="0" />
   <metadata
      id="metadata5">
     <rdf:RDF>
@@ -685,10 +684,22 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
+  <g
+     inkscape:groupmode="layer"
+     id="layer4"
+     inkscape:label="Layer 2">
+    <rect
+       style="fill:#ffffff;stroke-width:0.264583"
+       id="rect1323"
+       width="428.73254"
+       height="299.76004"
+       x="1.2907031"
+       y="1.1334717" />
+  </g>
   <g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
@@ -876,8 +887,7 @@
        id="rect4572"
        style="opacity:1;fill:#172441;fill-opacity:1;stroke:#172441;stroke-width:1.32291663;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <g
-       aria-label="Camera
-Controller"
+       aria-label="Camera Controller"
        style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:125%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26499999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="text4576">
       <path
@@ -953,8 +963,7 @@ Controller"
        x="94.281639"
        y="76.478729" />
     <g
-       aria-label="Monitor
-Controller"
+       aria-label="Monitor Controller"
        style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:125%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26499999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="text4586">
       <path
@@ -1034,8 +1043,7 @@ Controller"
        id="rect4600"
        style="opacity:1;fill:#172441;fill-opacity:1;stroke:#172441;stroke-width:1.32291663;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <g
-       aria-label="LiveView
-Controller"
+       aria-label="LiveView Controller"
        style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:125%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26499999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="text4606">
       <path
@@ -1119,8 +1127,7 @@ Controller"
        x="157.89317"
        y="178.34375" />
     <g
-       aria-label="Recording
-Controller"
+       aria-label="Recording Controller"
        style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:125%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26499999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="text4586-7">
       <path
@@ -1208,8 +1215,7 @@ Controller"
        id="rect7928"
        style="opacity:1;fill:#f5404f;fill-opacity:1;stroke:#172441;stroke-width:1.32291663;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <g
-       aria-label="Picture
-Archive"
+       aria-label="Picture Archive"
        style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:125%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26499999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="text7934">
       <path
@@ -1277,8 +1283,7 @@ Archive"
        x="196.52229"
        y="235.41815" />
     <g
-       aria-label="Dropbox
-Uploader"
+       aria-label="Dropbox Uploader"
        style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:125%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26499999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="text7942">
       <path
@@ -1350,8 +1355,7 @@ Uploader"
        id="rect11346"
        style="opacity:1;fill:#f5404f;fill-opacity:1;stroke:#172441;stroke-width:1.32291663;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <g
-       aria-label="Motion
-Detector"
+       aria-label="Motion Detector"
        style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:125%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26499999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="text11352">
       <path
@@ -1419,8 +1423,7 @@ Detector"
        id="rect12356"
        style="opacity:1;fill:#172441;fill-opacity:1;stroke:#172441;stroke-width:1.32291663;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <g
-       aria-label="WhatsappNotification
-Controller"
+       aria-label="WhatsappNotification Controller"
        style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:125%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1.32291663;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="text12362">
       <path
@@ -1548,8 +1551,7 @@ Controller"
        x="-70.56115"
        y="178.76985" />
     <g
-       aria-label="MailNotification
-Controller"
+       aria-label="MailNotification Controller"
        style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:125%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1.32291663;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="text12370">
       <path
@@ -1673,8 +1675,7 @@ Controller"
        x="47.473816"
        y="235.41815" />
     <g
-       aria-label="Whatsapp
-Notifier"
+       aria-label="Whatsapp Notifier"
        style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:125%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26499999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="text14610">
       <path
@@ -1746,8 +1747,7 @@ Notifier"
        id="rect14612"
        style="opacity:1;fill:#f5404f;fill-opacity:1;stroke:#172441;stroke-width:1.32291663;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <g
-       aria-label="Mail
-Notifier"
+       aria-label="Mail Notifier"
        style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:125%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26499999;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="text14618">
       <path
