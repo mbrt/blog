@@ -188,8 +188,41 @@ to all games: the initial position.
 
 I then constructed the graph of all games played by PlayerX as black,
 additionally annotating every edge with the number of times the particular move
-was played. What results is weighted directed graph (not a tree because a
-position can be reached with different sequences of moves) similar to this one:
+was played.
+
+```python
+class GamesGraph():
+    def __init__(self):
+        self.graph = igraph.Graph(directed=True)
+
+    def add_move(self, start_fen, end_fen, uci):
+        vs = self._ensure_vertex(start_fen)
+        vt = self._ensure_vertex(end_fen)
+        try:
+            e = self.graph.es.find(_source=vs.index, _target=vt.index)
+            e["count"] += 1
+        except:
+            e = self.graph.add_edge(vs, vt)
+            e["uci"] = uci
+            e["count"] = 1
+
+    @property
+    def start_node(self):
+        return self.graph.vs.find(chess.STARTING_FEN)
+
+    def _ensure_vertex(self, fen):
+        try:
+            return self.graph.vs.find(fen)
+        except:
+            v = self.graph.add_vertex(name=fen)
+            v["fen"] = fen
+            v["turn"] = chess.Board(fen).turn
+            return v
+```
+
+What results is weighted directed graph (not a tree because a position can be
+reached with different sequences of moves) similar to this one (a synthetic one
+because the real one would be too big to fit here):
 
 ![Graph with counters](graph-freq-eval.svg)
 
@@ -218,7 +251,8 @@ for fen, node in graph.fens.items():
     node.eva = eval_pos(fen)
 ```
 
-The evaluation is returned in centipawn advantage [TODO link] or mate in X
+The evaluation is returned in
+[centipawn advantage](https://chess.fandom.com/wiki/Centipawn) or mate in X
 moves, where a positive number means advantage for white and negative is an
 advantage for black:
 
@@ -239,12 +273,23 @@ mapped to 1.0 and a disadvantage of 300+ is mapped to 0. Additionally, any mate
 in X (even if X is 20) is 1 or 0.
 
 ```python
-def compute_edges_weight(vertex):
-    all_count = sum(map(lambda x: x["count"], vertex.out_edges()))
-    for edge in vertex.out_edges():
-        prob = edge["count"] / all_count
-        edge["prob"] = prob
-        edge["weight"] = -math.log(prob)
+# Returns [-1;1]
+def rating(ev, fen):
+    val = ev["value"]
+    if ev["type"] == "cp":
+        # Clamp to -300, +300. Winning a piece is enough.
+        val = max(-300, min(300, val))
+        return val / 300.0
+    # Mate in X: also max rating.
+    if val > 0: return 1.0
+    if val < 0: return -1.0
+    # This is already mate, but is it for white or black?
+    b = chess.Board(fen)
+    return 1.0 if b.turn == chess.WHITE else -1.0
+
+# Returns [0;1], where 0 is min, 1 is max advantage for black.
+def rating_black(ev, fen):
+    return -rating(ev, fen) * 0.5 + 0.5
 ```
 
 The information was then all there, I just needed to find nodes in the graph
@@ -274,6 +319,15 @@ simple:
 
 ```
 distance(e) = -log(prob(e))
+```
+
+```python
+def compute_edges_weight(vertex):
+    all_count = sum(map(lambda x: x["count"], vertex.out_edges()))
+    for edge in vertex.out_edges():
+        prob = edge["count"] / all_count
+        edge["prob"] = prob
+        edge["weight"] = -math.log(prob)
 ```
 
 Taking the logarithm of the probability of an edge will give a negative number
@@ -314,7 +368,7 @@ on and eat the e5 pawn and the rook. The game for black is pretty much over, as
 they scramble to save the knight, the h7 pawn and the bishop. Another result
 was this one (white to move):
 
-![scholar's mate](scholars-mate.svg)
+![scholars mate](scholars-mate.svg)
 
 Which is mate in one move
 ([Scholar's mate](https://en.wikipedia.org/wiki/Scholar%27s_mate)).
@@ -346,10 +400,11 @@ And this is how the probabilities look like:
 This is intuitively incorrect, as it's improbable that the same exact sequence
 of moves will be played with absolute certainty.
 
-The famous quote (from Brewster?) "In theory there is no difference between
-theory and practice, while in practice there is", was true in this case as
-well, so I needed a few tweaks and manual inspection to find better candidate
-positions.
+The famous quote
+([from Brewster?](https://quoteinvestigator.com/2018/04/14/theory/)) "In theory
+there is no difference between theory and practice, while in practice there
+is", was true in this case as well, so I needed a few tweaks and manual
+inspection to find better candidate positions.
 
 To correct the second problem I decided to put an upper bound to the
 probability of an edge, so long sequences of moves played only once will
@@ -362,13 +417,13 @@ to affect the probability of the paths, because I was playing white and could
 decide which path to take. For that reason I set all whites probabilities to
 1.0 (a zero weight). The end result is a graph like this one:
 
-[graph with final weights]
+![graph with weights final](graph-weights-final.svg)
 
 ### Preparation
 
 The position I settled on studying was this one:
 
-[alekhine.svg]
+![alekhine](alekhine.svg)
 
 According to Lichess this is an Alekhine defense (two pawn attack). In this
 position there's only one good move for black (Nb6) and black is still at a
@@ -391,20 +446,20 @@ after another when they are at a disadvantage. At move 10 I was at a +7.1
 advantage, pretty much impossible to lose, but I was also out of my
 preparation:
 
-[game-opening.svg]
+![game opening](game-opening.svg)
 
 I started making a bunch of mistakes from that point on, but I nevertheless was
 able to keep a non trivial advantage until move 27:
 
-[game-mid.svg]
+![game mid](game-mid.svg)
 
 Unfortunately I was very low on time (it was a rapid 10 minutes game) and so I
 had to move quickly. I ended up messing up completely move 32 and 33, giving my
 half-dead opponent mate in one :/.
 
-[game-end.svg]
+![game end](game-end.svg)
 
-Here's the full match:[^1]
+Here's the full match (full of blunders) if you are interested:[^1]
 
 <iframe src="https://lichess.org/embed/2qKKl2MI?theme=auto&bg=auto" width=600 height=397 frameborder=0></iframe>
 
@@ -427,13 +482,12 @@ in retrospect:
    chance at beating your brother is even more fun! I hope I'll be able to do
    it one day :)
 
-You can find the code I used in my GitHub repo: [TODO link to my repo]. Note
-that I did not include the data and the project is quite messy, but I hope this
-can be some inspiration for you. If you are considering whether to study
-computer science, whether being a software developer might be for you or not, I
-hope this post can be some fun glimpse into how interesting it can be to solve
-"real world problems" with a computer. It makes you feel you have an additional
-tool under your belt.
+You can find the code I used in my
+[GitHub repo](https://github.com/mbrt/chess-analysis). Note that I did not
+include the data and the code is quite messy, but I hope it can be of some
+inspiration, especially for folks that are considering whether computer science
+might be for them or not. Look, you can solve "real world" problems with it,
+it's not just moving bits around!
 
 That's all folks, I hope I'll be able to win a match against my brother some
 day, but until then, I'll keep trying... my own way.
