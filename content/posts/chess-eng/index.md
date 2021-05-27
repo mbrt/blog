@@ -8,8 +8,8 @@ draft: true
 
 This is the story of me trying to win a game of chess against my brother. A
 single freaking game. What's so special about it? Am I good at chess? Not at
-all. Did I improve at my game in the process? Also no. Is it a story about “the
-journey rather than the destination”? Not really. Did I at least have fun in
+all. Did I improve at my game in the process? Also no. Is it a story about "the
+journey rather than the destination"? Not really. Did I at least have fun in
 the process? Not so sure. This is the story of me trying to be unconventional
 at probably the most studied game in existence and using my software
 engineering background for something that probably doesn't need it.
@@ -202,7 +202,21 @@ thousands of positions is somewhat time consuming, I decided to do that
 separately and create a JSON object mapping each unique FEN position to its
 Stockfish evaluation.
 
-[snippet stockfish eval all positions]
+```python
+from stockfish import Stockfish
+
+stock = Stockfish(parameters={"Threads": 8})
+stock.set_depth(20)
+stock.set_skill_level(20)
+
+def eval_pos(fen):
+    stock.set_fen_position(fen)
+    return stock.get_evaluation()
+
+# fens is a map between a FEN string and a node of the graph.
+for fen, node in graph.fens.items():
+    node.eva = eval_pos(fen)
+```
 
 The evaluation is returned in centipawn advantage [TODO link] or mate in X
 moves, where a positive number means advantage for white and negative is an
@@ -224,7 +238,14 @@ between 0 and 1. To do so, I decided arbitrarily that an advantage of 300+ is
 mapped to 1.0 and a disadvantage of 300+ is mapped to 0. Additionally, any mate
 in X (even if X is 20) is 1 or 0.
 
-[snippet of computing rating from stockfish eval]
+```python
+def compute_edges_weight(vertex):
+    all_count = sum(map(lambda x: x["count"], vertex.out_edges()))
+    for edge in vertex.out_edges():
+        prob = edge["count"] / all_count
+        edge["prob"] = prob
+        edge["weight"] = -math.log(prob)
+```
 
 The information was then all there, I just needed to find nodes in the graph
 (i.e. positions) where black was at a disadvantage, along with the sequence of
@@ -266,7 +287,7 @@ its sign will make it satisfy our requirements, because:
   arguments: `log(a) + log(b) = log(a*b)`.
 * The bigger the result, the lower the underlying probability.
 
-[graph of final weights]
+![graph with weights](graph-weights-simple.svg)
 
 Equipped with this data, we can compute the [shortest
 path](https://en.wikipedia.org/wiki/Shortest_path_problem) between the initial
@@ -280,10 +301,144 @@ At that point I arbitrarily chose a minimum advantage and sorted the paths by
 probability. The first few paths represented my best chances to gain an
 advantage out of the opening against PlayerX.
 
+### Tweaks
 
+What did I find? This was a position returned by the algorithm above (white to
+move):
 
+![early queen attack](early-queen-attack.svg)
 
+As you can see the situation for black is pretty bad (+8.9 according to
+Stockfish), because g6, the last move for black, was a mistake. White will go
+on and eat the e5 pawn and the rook. The game for black is pretty much over, as
+they scramble to save the knight, the h7 pawn and the bishop. Another result
+was this one (white to move):
 
-<!--
+![scholar's mate](scholars-mate.svg)
+
+Which is mate in one move
+([Scholar's mate](https://en.wikipedia.org/wiki/Scholar%27s_mate)).
+
+The problem here is that these were mistakes done several times by PlayerX only
+during his first matches and never repeated again. Early queen attacks are
+usually carried out by very inexperienced players and they are effective only
+against players at that level. PlayerX didn't fall for that trap for a long
+time afterwards, because better opponents don't play that kind of move! I knew
+that I couldn't really use this opening, because PlayerX knew how to defend
+against it now and would not fall for it anymore.
+
+Another problem was related to sequences of moves that happened only once, but
+coming from common positions. The probability of the final position was the
+same as the probability of the last common position, because every edge had a
+probability of 1.0 (given that no other possibilities have been played). In the
+example below (edges marked with their probabilities), you can follow the edges
+with 7 and 6 (the most common position at move 2), but then follow one of the
+edges with a 1. From that point on, all the subsequent moves will have been
+played only once (i.e. probability 1.0) and so retain the probability of the
+previous move.
+
+![graph with frequencies](graph-freq-eval.svg)
+
+And this is how the probabilities look like:
+
+![graph with probabilities](graph-prob-simple.svg)
+
+This is intuitively incorrect, as it's improbable that the same exact sequence
+of moves will be played with absolute certainty.
+
+The famous quote (from Brewster?) "In theory there is no difference between
+theory and practice, while in practice there is", was true in this case as
+well, so I needed a few tweaks and manual inspection to find better candidate
+positions.
+
+To correct the second problem I decided to put an upper bound to the
+probability of an edge, so long sequences of moves played only once will
+gradually lose probability. For the first problem I just manually screened out
+bad suggestions. At the end of the day I only needed one or two good positions
+to work on.
+
+One more tweak was related to the fact that I didn't want white's probabilities
+to affect the probability of the paths, because I was playing white and could
+decide which path to take. For that reason I set all whites probabilities to
+1.0 (a zero weight). The end result is a graph like this one:
+
+[graph with final weights]
+
+### Preparation
+
+The position I settled on studying was this one:
+
+[alekhine.svg]
+
+According to Lichess this is an Alekhine defense (two pawn attack). In this
+position there's only one good move for black (Nb6) and black is still at a
+slight disadvantage (+0.6 according to Stockfish). However, from that position
+PlayerX often plays Nf4, which is bad (+2.3). I created a study in Lichess and
+started looking at several variations (good moves and moves played by PlayerX).
+The end result was a tree of possibilities that I tried to memorize and
+understand. For example I needed to know what a move like d5 was threatening,
+why the move Nf4 was bad and prepare the best responses.
+
+I didn't spend much time doing this because I got bored pretty quickly, but I
+did prepare a bit for the upcoming match.
+
+## The match
+
+As if I were predicting the future, in my match against PlayerX, we got into an
+Alekhine defense. Put under pressure he did end up blundering his knight at
+move 5. Turns out even players much better than you end up making one mistake
+after another when they are at a disadvantage. At move 10 I was at a +7.1
+advantage, pretty much impossible to lose, but I was also out of my
+preparation:
+
+[game-opening.svg]
+
+I started making a bunch of mistakes from that point on, but I nevertheless was
+able to keep a non trivial advantage until move 27:
+
+[game-mid.svg]
+
+Unfortunately I was very low on time (it was a rapid 10 minutes game) and so I
+had to move quickly. I ended up messing up completely move 32 and 33, giving my
+half-dead opponent mate in one :/.
+
+[game-end.svg]
+
+Here's the full match:[^1]
+
 <iframe src="https://lichess.org/embed/2qKKl2MI?theme=auto&bg=auto" width=600 height=397 frameborder=0></iframe>
--->
+
+## Conclusion
+
+What did I learn from this endeavour? A few things, most of which seem obvious
+in retrospect:
+
+1. Preparing for a specific opponent can give a considerable edge during the
+   opening.
+2. Players at lower levels aren't good at punishing dubious moves from the
+   opponent. Getting into tricky positions where only one response is correct
+   are easy ways to gain an advantage.
+3. The opening isn't everything. If you are bad at time management and tactics,
+   it's possible to lose completely winning positions. Chess games can be
+   decided by one bad move.
+4. Studying the game is important and there's no silver bullet if your opponent
+   is much better than you, but narrowing the skill gap is possible.
+5. Applying software engineering principles to chess is fun. Doing it to have a
+   chance at beating your brother is even more fun! I hope I'll be able to do
+   it one day :)
+
+You can find the code I used in my GitHub repo: [TODO link to my repo]. Note
+that I did not include the data and the project is quite messy, but I hope this
+can be some inspiration for you. If you are considering whether to study
+computer science, whether being a software developer might be for you or not, I
+hope this post can be some fun glimpse into how interesting it can be to solve
+"real world problems" with a computer. It makes you feel you have an additional
+tool under your belt.
+
+That's all folks, I hope I'll be able to win a match against my brother some
+day, but until then, I'll keep trying... my own way.
+
+
+[^1]: Original usernames are edited out because I didn't ask my brother's
+permission to post the match. I also still hope to try this trick one more time
+on him before he finds out :)
