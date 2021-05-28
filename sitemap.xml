@@ -2,6 +2,24 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>https://blog.mbrt.dev/tags/chess/</loc>
+    <lastmod>2021-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://blog.mbrt.dev/tags/data-science/</loc>
+    <lastmod>2021-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://blog.mbrt.dev/posts/chess-eng/</loc>
+    <lastmod>2021-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://blog.mbrt.dev/</loc>
+    <lastmod>2021-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://blog.mbrt.dev/posts/</loc>
+    <lastmod>2021-05-28T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://blog.mbrt.dev/tags/</loc>
+    <lastmod>2021-05-28T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://blog.mbrt.dev/tags/containers/</loc>
     <lastmod>2017-10-01T00:00:00+00:00</lastmod>
   </url><url>
@@ -9,15 +27,6 @@
     <lastmod>2017-10-01T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://blog.mbrt.dev/tags/linux/</loc>
-    <lastmod>2017-10-01T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://blog.mbrt.dev/</loc>
-    <lastmod>2017-10-01T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://blog.mbrt.dev/posts/</loc>
-    <lastmod>2017-10-01T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://blog.mbrt.dev/tags/</loc>
     <lastmod>2017-10-01T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://blog.mbrt.dev/posts/antifurto/</loc>
