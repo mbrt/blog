@@ -1,9 +1,8 @@
 ---
 title: "Engineering a chess match against my brother"
-date: 2021-05-24
+date: 2021-05-28
 tags: [chess, data-science]
 toc: true
-draft: true
 ---
 
 This is the story of me trying to win a game of chess against my brother. A
@@ -15,7 +14,7 @@ at probably the most studied game in existence and using my software
 engineering background for something that probably doesn't need it.
 
 Although I'm a total disaster at chess and this post is useless to whoever
-seriously wants to improve at their game, I still thought it was worth sharing
+seriously wants to improve at their game, I still think it was worth sharing
 how it's possible to apply software engineering principles to a problem. Was I
 successful? You'll see at the end.
 
@@ -26,31 +25,32 @@ took a passion for playing online chess. After playing for a couple of months
 he started speaking very enthusiastically about it and challenging other family
 members, but where my father would budge (and get digitally butchered) I
 wouldn't. For one thing, I refrained myself from delving into a potentially
-very time consuming hobby. I knew enough about chess to understand that to be
-only a mediocre amateur club player you'd still need to sink hundreds if not
-thousands of hours in the game. I admit I also didn't like the thought of
+very time consuming hobby. I knew enough about chess to understand that to
+become even a mediocre amateur club player you'd still need to sink hundreds if
+not thousands of hours in the game. I admit I also didn't like the thought of
 losing against my brother, which was certain at the time, since he already had
 hundreds of games under his belt and I had none.
 
-Then one day I finally gave in and accepted a challenge from him. Needless to
-say that I lost completely. I knew the rules and the rudimentary of the game,
+One day I finally gave in and accepted a challenge from him. Needless to say
+that I lost completely. I knew the rules and the rudimentary of the game,
 having played a little bit as a kid, but my brother was obviously no match.
 Looking at the post-game analysis in [chess.com](https://www.chess.com) I saw
 that my disadvantage only grew, move by move, until reaching a +9 evaluation
 (equivalent to having lost one rook, a bishop and a pawn to zero), which is
 beyond any hope for a comeback, where I resigned. This blueprint was followed
-for another couple of matches, where I understood I had to do something to
+during another couple of matches, where I understood I had to do something to
 avoid being demolished every time.
 
-This is when I decided I wanted to study the game a bit more.
+This was when I decided I wanted to study the game a bit more.
 
 ## First attempt: learn
 
 My first attempt in trying to improve at the game was to do the obvious: head
-to Reddit and YouTube to see what other learners recommend. Between a tutorial
-from [GM Naroditsky](https://www.youtube.com/channel/UCHP9CdeguNUI-_nBv_UXBhw),
-some reading and puzzle solving on [Lichess](https://lichess.org) I also played
-a few games with random people on the Internet. My rating stayed pretty low
+to Reddit and YouTube to see what other learners recommended. Between a
+tutorial from
+[GM Naroditsky](https://www.youtube.com/channel/UCHP9CdeguNUI-_nBv_UXBhw), some
+reading and puzzle solving on [Lichess](https://lichess.org), I also played a
+few games with random people on the Internet. My rating stayed pretty low
 nevertheless (1300 - 1400 Rapid on Lichess).
 
 ![Rating distribution](rating-distr.png)
@@ -71,7 +71,7 @@ A chess match can be generally divided into three phases: the
 [opening](https://en.wikipedia.org/wiki/Chess_opening), the
 [middlegame](https://en.wikipedia.org/wiki/Chess_middlegame) and the
 [endgame](https://en.wikipedia.org/wiki/Chess_endgame). Converting a
-significant advantage into a victory during an endgame is usually easy, after
+significant advantage into a victory during an endgame is usually "easy", after
 studying some
 [basic checkmate patterns](https://en.wikipedia.org/wiki/Checkmate#Basic_checkmates),
 so the question for me was how to get that advantage in the first place.
@@ -81,10 +81,10 @@ Gaining advantage during a middlegame is usually achieved by long-term
 improved by reading and studying the game principles (something I can enjoy)
 while the second is only possible by doing
 [puzzles](https://en.wikipedia.org/wiki/Chess_puzzle) (which I don't
-particularly like). I knew that I would be at a disadvantage here, given that
-my brother used to do about 20 puzzles a day on chess.com, something I would
-never be able to catch up to. This only left one possibility: gaining advantage
-during the opening.
+particularly like doing). I knew that I would be at a disadvantage here, given
+that my brother used to do about 20 puzzles a day on chess.com, something I
+would never be able to catch up to. This only left one possibility: gaining
+advantage during the opening.
 
 Chess opening theory is humongous and involves memorizing long sequences and
 variations of moves, along with possible replies from the opponent. Beginners
@@ -93,15 +93,15 @@ openings can go a long way (or so I was told). What I tried then was to look at
 some random games that my brother played and try to study the openings he was
 using. I looked at the [Italian opening](https://lichess.org/study/vJsZScnC)
 and [Sicilian defense](https://lichess.org/study/jsSks17H) on Lichess and tried
-to memorize the basic ideas behind those. I also watched a bunch of videos on
+to memorize the basic ideas behind them. I also watched a bunch of videos on
 YouTube.
 
-Obviously my brother did all of this already before me (better) and so I
-understandably lost again. Not to mention that memorizing meaningless (at least
-to me) opening moves is boring and laborious. I didn't really have fun doing
-any of that. Another issue was that after my opponent deviated from the known
-book moves I had no idea about how to react, because I didn't really understand
-the positions.
+Obviously my brother had already done all of this before me (and better) and so
+I understandably lost again. Not to mention that memorizing meaningless (at
+least to me) opening moves is boring and laborious. I didn't really have fun
+doing any of that. Another issue was that after my opponent deviated from the
+known book moves, I had no idea about how to react, because I didn't really
+understand the positions.
 
 It was time to step back and think again. I realized then I wasn't really
 trying to beat my brother, but I was trying to improve my game against
@@ -117,13 +117,13 @@ The problem to solve became: find positions out of the opening that my brother
 disadvantage. Remember that neither of us is an expert of the game and at our
 level players don't play very accurately. The only way to play against a good
 player would be to follow book moves accurately, because you at least know in
-advance there's no move they can make to get an advantage. The story is
+advance there's no move they can make to gain an advantage. The story is
 different when you play against a club player. You can take risks (i.e. be
 temporarily at a disadvantage) if you know that your opponent is unlikely to be
 able to find the correct response and so get into trouble.
 
 I also had a list of over 500 games my brother played on chess.com. Being a
-software engineer it came natural to me approaching this as any other
+software engineer, it came natural to me to approach this as any other
 engineering problem.
 
 I started by downloading the games he played by using the
@@ -171,13 +171,12 @@ is at a substantial disadvantage?".
 Now I had a well formulated problem and I was finally playing in a domain I was
 familiar with. I decided to do my analysis in Python and in particular to use a
 [Jupyter notebook](https://jupyter.org/), because I didn't really want to
-create a reusable tool, but only to explore the data and find one solution for
-the data I had available. It turns out Python already has pretty amazing
-libraries to manipulate chess games:
-[python-chess](https://python-chess.readthedocs.io/) (moves generation,
-validation, visualization) and [python
-stockfish](https://pypi.org/project/stockfish/) (bindings to evaluate a chess
-position by using the very famous Stockfish engine).
+create a reusable tool, but only to explore the available data and find *one*
+solution. It turns out Python already has pretty amazing libraries to
+manipulate chess games: [python-chess](https://python-chess.readthedocs.io/)
+(moves generation, validation, visualization) and
+[python stockfish](https://pypi.org/project/stockfish/) (bindings to evaluate a
+chess position by using the famous Stockfish chess engine).
 
 I translated the problem into a graph problem in this way: A node is a
 particular chess position (described in
@@ -229,11 +228,11 @@ because the real one would be too big to fit here):
 Here the initial position is the squared node, the color indicates whether
 from that position it's black or white's turn.
 
-I also wanted then an evaluation of each position in terms of advantage for
-white and to do so I used Stockfish. Given that the process of evaluating
-thousands of positions is somewhat time consuming, I decided to do that
-separately and create a JSON object mapping each unique FEN position to its
-Stockfish evaluation.
+I also wanted an evaluation of each position in terms of advantage for white
+and to do so I used Stockfish. Given that the process of evaluating thousands
+of positions is somewhat time consuming, I decided to do that separately and
+create a JSON object mapping each unique FEN position to its Stockfish
+evaluation.
 
 ```python
 from stockfish import Stockfish
@@ -252,8 +251,8 @@ for fen, node in graph.fens.items():
 ```
 
 The evaluation is returned in
-[centipawn advantage](https://chess.fandom.com/wiki/Centipawn) or mate in X
-moves, where a positive number means advantage for white and negative is an
+[centipawn advantage](https://chess.fandom.com/wiki/Centipawn) or "mate-in X
+moves", where a positive number means advantage for white and negative is an
 advantage for black:
 
 ```python
@@ -309,10 +308,10 @@ position. My reasoning was as follow:
 To solve the problem with standard graph algorithms I needed to transform the
 weights at the edges in such a way that:
 
-* They represent a distance instead of a probability (i.e. the higher the
+* They represent a distance instead of a probability (i.e. the longer the
   distance, the lower the probability of the path).
 * The distance between two nodes is the sum of the weights of the traversed
-  edge (as opposed to the product of probabilities).
+  edges (as opposed to the product of probabilities).
 
 This is actually easier to do than to explain. The actual formula is very
 simple:
@@ -320,6 +319,8 @@ simple:
 ```
 distance(e) = -log(prob(e))
 ```
+
+Or, in Python:
 
 ```python
 def compute_edges_weight(vertex):
@@ -330,12 +331,12 @@ def compute_edges_weight(vertex):
         edge["weight"] = -math.log(prob)
 ```
 
-Taking the logarithm of the probability of an edge will give a negative number
-by design, given that the probability is between 0 and 1. We don't have to
-worry about the case of probability zero (which would shoot the logarithm to
-minus infinity), as every edge of the graph has been taken at least once. The
-lower the probability, the more negative the logarithm will be, so inverting
-its sign will make it satisfy our requirements, because:
+Taking the logarithm of the probability of an edge will give a negative number,
+because the probability is between 0 and 1. We don't have to worry about the
+case of probability zero (which would shoot the logarithm to minus infinity),
+as every edge of the graph has been taken at least once. The lower the
+probability, the more negative the logarithm will be, so inverting its sign
+will make it satisfy our requirements, because:
 
 * The sum of logarithms is the same as the logarithm of the product of their
   arguments: `log(a) + log(b) = log(a*b)`.
@@ -364,7 +365,7 @@ move):
 
 As you can see the situation for black is pretty bad (+8.9 according to
 Stockfish), because g6, the last move for black, was a mistake. White will go
-on and eat the e5 pawn and the rook. The game for black is pretty much over, as
+on, eat the e5 pawn and the rook. The game for black is pretty much over, as
 they scramble to save the knight, the h7 pawn and the bishop. Another result
 was this one (white to move):
 
@@ -376,7 +377,7 @@ Which is mate in one move
 The problem here is that these were mistakes done several times by PlayerX only
 during his first matches and never repeated again. Early queen attacks are
 usually carried out by very inexperienced players and they are effective only
-against players at that level. PlayerX didn't fall for that trap for a long
+against players at that level. PlayerX hasn't fallen for that trap for a long
 time afterwards, because better opponents don't play that kind of move! I knew
 that I couldn't really use this opening, because PlayerX knew how to defend
 against it now and would not fall for it anymore.
@@ -388,8 +389,8 @@ probability of 1.0 (given that no other possibilities have been played). In the
 example below (edges marked with their probabilities), you can follow the edges
 with 7 and 6 (the most common position at move 2), but then follow one of the
 edges with a 1. From that point on, all the subsequent moves will have been
-played only once (i.e. probability 1.0) and so retain the probability of the
-previous move.
+played only once (because only a single match reached that position) and so
+every step will have a probability of 1.0.
 
 ![graph with frequencies](graph-freq-eval.svg)
 
@@ -398,7 +399,8 @@ And this is how the probabilities look like:
 ![graph with probabilities](graph-prob-simple.svg)
 
 This is intuitively incorrect, as it's improbable that the same exact sequence
-of moves will be played with absolute certainty.
+of moves will be played with absolute certainty. We don't have enough games
+being played from those positions to know that.
 
 The famous quote
 ([from Brewster?](https://quoteinvestigator.com/2018/04/14/theory/)) "In theory
@@ -408,14 +410,25 @@ inspection to find better candidate positions.
 
 To correct the second problem I decided to put an upper bound to the
 probability of an edge, so long sequences of moves played only once will
-gradually lose probability. For the first problem I just manually screened out
-bad suggestions. At the end of the day I only needed one or two good positions
-to work on.
+gradually lose probability.
+
+```python
+def compute_edges_weight(vertex, prob_ceiling=0.9):
+    all_count = sum(map(lambda x: x["count"], vertex.out_edges()))
+    for edge in vertex.out_edges():
+        # Certainty doesn't exist... Let's put a probability ceiling (default 90%).
+        prob = min(edge["count"] / all_count, prob_ceiling)
+        edge["prob"] = prob
+        edge["weight"] = -math.log(prob)
+```
+
+For the first problem I just manually screened out bad suggestions. At the end
+of the day I only needed one or two good positions to work on.
 
 One more tweak was related to the fact that I didn't want white's probabilities
 to affect the probability of the paths, because I was playing white and could
 decide which path to take. For that reason I set all whites probabilities to
-1.0 (a zero weight). The end result is a graph like this one:
+1.0 (a zero weight). The end result was a graph like this one:
 
 ![graph with weights final](graph-weights-final.svg)
 
@@ -442,9 +455,11 @@ did prepare a bit for the upcoming match.
 As if I were predicting the future, in my match against PlayerX, we got into an
 Alekhine defense. Put under pressure he did end up blundering his knight at
 move 5. Turns out even players much better than you end up making one mistake
-after another when they are at a disadvantage. At move 10 I was at a +7.1
-advantage, pretty much impossible to lose, but I was also out of my
-preparation:
+after another when they are at a disadvantage. It's easy to play accurately
+when you're winning, but can you keep your cool when you are losing? At move 10
+I was at a +7.1 advantage, pretty much impossible to lose, but I was also out
+of my preparation. Look at how cramped black's position is and how my pieces
+are all pointing towards the enemy's king:
 
 ![game opening](game-opening.svg)
 
@@ -459,7 +474,7 @@ half-dead opponent mate in one :/.
 
 ![game end](game-end.svg)
 
-Here's the full match (full of blunders) if you are interested:[^1]
+Here's the full match (blunders and all):[^1]
 
 <iframe src="https://lichess.org/embed/2qKKl2MI?theme=auto&bg=auto" width=600 height=397 frameborder=0></iframe>
 
@@ -468,7 +483,7 @@ Here's the full match (full of blunders) if you are interested:[^1]
 What did I learn from this endeavour? A few things, most of which seem obvious
 in retrospect:
 
-1. Preparing for a specific opponent can give a considerable edge during the
+1. Preparing for a specific opponent can give a considerable edge in the
    opening.
 2. Players at lower levels aren't good at punishing dubious moves from the
    opponent. Getting into tricky positions where only one response is correct
@@ -477,7 +492,8 @@ in retrospect:
    it's possible to lose completely winning positions. Chess games can be
    decided by one bad move.
 4. Studying the game is important and there's no silver bullet if your opponent
-   is much better than you, but narrowing the skill gap is possible.
+   is much better than you, but narrowing the skill gap is possible with
+   specific preparation.
 5. Applying software engineering principles to chess is fun. Doing it to have a
    chance at beating your brother is even more fun! I hope I'll be able to do
    it one day :)
