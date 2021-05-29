@@ -365,7 +365,7 @@ move):
 
 As you can see the situation for black is pretty bad (+8.9 according to
 Stockfish), because g6, the last move for black, was a mistake. White will go
-on, eat the e5 pawn and the rook. The game for black is pretty much over, as
+on, take the e5 pawn and the rook. The game for black is pretty much over, as
 they scramble to save the knight, the h7 pawn and the bishop. Another result
 was this one (white to move):
 
