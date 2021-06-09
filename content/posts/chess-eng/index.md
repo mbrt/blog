@@ -508,6 +508,8 @@ it's not just moving bits around!
 That's all folks, I hope I'll be able to win a match against my brother some
 day, but until then, I'll keep trying... my own way.
 
+Feedback on [Hacker News](https://news.ycombinator.com/item?id=27431924).
+
 
 [^1]: Original usernames are edited out because I didn't ask my brother's
 permission to post the match. I also still hope to try this trick one more time
