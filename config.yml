@@ -74,10 +74,10 @@ params:
       url: "https://github.com/mbrt"
     - name: twitter
       url: "https://twitter.com/mbrt_dev"
-    - name: RsS
-      url: "index.xml"
     - name: linkedin
       url: "https://www.linkedin.com/in/michelebertasi/"
+    - name: RsS
+      url: "index.xml"
 
   cover:
     hidden: true # hide everywhere but not in structured data
