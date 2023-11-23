@@ -5,6 +5,7 @@
     <link>https://blog.mbrt.dev/tags/chess/</link>
     <description>Recent content in chess on mbrt blog</description>
     <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
     <lastBuildDate>Fri, 28 May 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/tags/chess/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Engineering a chess match against my brother</title>
