@@ -63,11 +63,10 @@ params:
   homeInfoParams:
     Title: "mbrt blog"
     Content: >
-      Short intro: I'm a Software Engineer / Site Reliability Engineer. My main
-      interests are related to Linux, Kubernetes, C++, Rust, Go, security and reverse
-      engineering. Besides that I love reading sci-fi and historical novels, travel,
-      listen to music and do sport with friends (futsal, climbing, running and
-      swimming). 
+      I'm a Software Engineer / Site Reliability Engineer. My main interests are
+      related to Linux, Kubernetes, C++, Rust, Go, security and reverse engineering.
+      In Real Life I love reading sci-fi and historical novels, travel, listen to
+      music and play sports with friends and family.
 
   socialIcons:
     - name: github
