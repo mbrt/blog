@@ -6,7 +6,18 @@
     <description>Recent content in Posts on mbrt blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Fri, 28 May 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sun, 17 Dec 2023 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Maybe you don&#39;t need SRE</title>
+      <link>https://blog.mbrt.dev/posts/no-need-sre/</link>
+      <pubDate>Sun, 17 Dec 2023 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/posts/no-need-sre/</guid>
+      <description>Running a Site Reliability Engineering (SRE) organization correctly is difficult and expensive. Spare the frustration, perhaps what you need is Sysadmins.
+Since the term was coined by Ben Treynor in 2003 at Google, lots of ink was spent on praising SRE practices. Not enough on when it is appropriate to have SREs. This post is a take on that angle.
+Disclaimer: I was an SRE at Google and this piece represents only my own views.</description>
+    </item>
+    
     <item>
       <title>Engineering a chess match against my brother</title>
       <link>https://blog.mbrt.dev/posts/chess-eng/</link>
