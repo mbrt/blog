@@ -259,12 +259,12 @@ audience:
 6. Maintain until the implementation is finished, then archive
 
 Ideally, authors should not spend more than a few hours on a document before
-sharing. Terrible ideas will be weeded out at early iterations, while the
+sharing. Terrible ideas will be weeded out during early iterations, while the
 document is not polished.
 
 In case formal review and approval is necessary, this can be done during later
-iterations of the document, when most of the target audience has already seen
-and discussed it. This ensures painless review processes.
+iterations, when most of the target audience has already seen and discussed the
+contents. This makes the review process easier.
 
 ## Structure
 
@@ -283,7 +283,7 @@ My personal go-to starter structure for a technical design is the following:
 * Alternatives considered
 
 From this structure, I will add or remove sections depending on the domain and
-audience. I might e.g. put more emphasis in security considerations and
+audience. I might, for example, put more emphasis in security considerations and
 therefore add a specific section for that.
 
 Note also that this structure will not work for retrospectives, nor project
@@ -300,8 +300,9 @@ comes with a prescribed structure and length. The prose is basically a wall of
 text without links, nor pictures (except for the appendix). The review is a
 formalized meeting where leads read print-outs of the document. The focus is
 really on an in-person, synchronous review, which requires lots of preparation
-and can be painful. The differences stop there. The approach is the same as the
-one I described: focus on the audience, clarity and simplicity, reasoning.
+and can be painful. The differences stop there. The rest of the approach is the
+same as the one I described: focus on the audience, clarity and simplicity,
+reasoning.
 
 I personally prefer asynchronous and incremental reviews, as these tend to be
 cheaper and less emotionally charged. However, given how successful Amazon is,
@@ -311,11 +312,12 @@ their approach is clearly working as well :)
 
 An alternative is [Architecture Decision
 Records](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
-(ADRs). The focus here is on the decision being made and its consequences. The
+(ADRs). Their focus is on the decisions being made and their consequences. The
 proposed structure is: context, decision, status and consequences. I really like
-the approach because it's very simple. What are you changing, how, and what is
+the approach because of its simplicity. What are you changing, how, and what is
 the expected result? What is becoming easier, and what harder as a consequence?
-ADRs help to make decisions but also serve as documentation for the future.
+These are the questions answered by ADRs, which help to make decisions but also
+serve as documentation for the future.
 
 The only thing I'm missing from ADRs is the discussion about alternative options
 and why they weren't picked. They can nevertheless serve as a very good starting
@@ -324,38 +326,38 @@ point for a design document.
 ### Do nothing
 
 The most important alternative, I would always like to see in a design, is the
-default “do nothing" option. I'm going to add it here as well: what about not
-using design docs at all? Doing decisions through very small, incremental
-changes that can be discussed within a team, or having a lead making those
-decisions. One prominent proponent of this idea is 37 Signals, which
+default "do nothing" option. I'm going to add it here as well: what about not
+using design docs at all? For example, doing decisions through very small,
+incremental changes that can be discussed within a team, or having a lead making
+those decisions. One prominent proponent of this idea is 37 Signals, which
 [suggests](https://basecamp.com/gettingreal/11.2-dont-do-dead-documents) not
-using designs at all and if anything, “this process shouldn't take more than one
-day". The focus is on mocks and coding.
+using designs at all and if really forced, "this process shouldn't take more
+than one day". The focus is on mocks and coding instead.
 
 There are areas where this can work just fine, especially with [two-way
 doors](https://aws.amazon.com/executive-insights/content/how-amazon-defines-and-operationalizes-a-day-1-culture/)
-decisions, or UI changes for an App. I didn't find this working well enough when
+decisions, or UI changes for an app. I didn't find this working well enough when
 decisions impact multiple teams or are not easily reversible. For example,
 security or data protection changes cannot be made without deliberate
 discussions. Large architectural changes or new technologies also require
 scrutiny and discussion. Failing that, organizations will rely on decisions
 being made by the quickest person implementing them, or leaders in an
 untransparent way. Both of which result in suboptimal and sometimes disastrous
-results. A common example of that is introducing a new technology just for
-someone to learn it, rather than solving a real problem. We all know how this
-ends: people introducing this new technology leave and the remaining are stuck
-with an inconsistent architecture. This can repeat multiple times, until the
-result is so unnecessarily complex, that every successive change requires a lot
-of discussion or is plain impossible. If design docs are not used here either,
-this means many repetitive meetings and slow progress.
+results. A common example of that is introducing a new technology just because
+someone wants to learn it, rather than solving a real problem. We all know how
+this ends: people introducing this new technology leave and the remaining are
+stuck with an inconsistent architecture. This can happen multiple times, until
+the result is so unnecessarily complex that every successive change requires a
+lot of discussion or is plain impossible. If design docs are not used here
+either, this means many repetitive meetings and slow progress.
 
 ## Conclusions
 
 Design documents should not be a pain to read and write. They should not slow
 people down, nor make them feel stupid. They should be used as a
 [shift-left](https://en.wikipedia.org/wiki/Shift-left_testing) tool to iterate
-on ideas collaboratively, efficiently and transparently. Furthermore, serve as
-an accelerator for quality and knowledge sharing.
+on ideas collaboratively, efficiently and transparently. Furthermore, they
+should serve as an accelerator for quality and knowledge sharing.
 
 To facilitate moving from painful to useful, keep in mind the following key goals of a doc:
 
