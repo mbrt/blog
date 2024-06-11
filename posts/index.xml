@@ -6,7 +6,17 @@
     <description>Recent content in Posts on mbrt blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Sun, 17 Dec 2023 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Tue, 11 Jun 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Better design docs</title>
+      <link>https://blog.mbrt.dev/posts/better-design-docs/</link>
+      <pubDate>Tue, 11 Jun 2024 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/posts/better-design-docs/</guid>
+      <description>What is a design document? When is it useful to have one? How to make it useful? These are the questions I&amp;rsquo;m going to address in this post. The goal is to provide some bite sized, easy to remember guidelines. My promise to you is that after this post, you&amp;rsquo;ll be faster and more effective in making and reviewing designs.
+This is a written version of a talk I gave at my current employer.</description>
+    </item>
+    
     <item>
       <title>Maybe you don&#39;t need SRE</title>
       <link>https://blog.mbrt.dev/posts/no-need-sre/</link>

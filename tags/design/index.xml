@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Design on mbrt blog</title>
+    <link>https://blog.mbrt.dev/tags/design/</link>
+    <description>Recent content in Design on mbrt blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
+    <lastBuildDate>Tue, 11 Jun 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/tags/design/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Better design docs</title>
+      <link>https://blog.mbrt.dev/posts/better-design-docs/</link>
+      <pubDate>Tue, 11 Jun 2024 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.mbrt.dev/posts/better-design-docs/</guid>
+      <description>What is a design document? When is it useful to have one? How to make it useful? These are the questions I&amp;rsquo;m going to address in this post. The goal is to provide some bite sized, easy to remember guidelines. My promise to you is that after this post, you&amp;rsquo;ll be faster and more effective in making and reviewing designs.
+This is a written version of a talk I gave at my current employer.</description>
+    </item>
+    
+  </channel>
+</rss>
