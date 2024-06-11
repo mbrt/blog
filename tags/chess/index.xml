@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title>chess on mbrt blog</title>
+    <title>Chess on mbrt blog</title>
     <link>https://blog.mbrt.dev/tags/chess/</link>
-    <description>Recent content in chess on mbrt blog</description>
+    <description>Recent content in Chess on mbrt blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
     <lastBuildDate>Fri, 28 May 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/tags/chess/index.xml" rel="self" type="application/rss+xml" />
