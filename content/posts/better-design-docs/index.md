@@ -252,7 +252,7 @@ The better way to design something is to iterate on both document and target
 audience:
 
 1. Discuss
-2. Dump knowledge
+2. Dump knowledge, incorporate feedback
 3. Organize
 4. Share with a few (more)
 5. Iterate, incorporate comments (go to #2)
@@ -262,9 +262,13 @@ Ideally, authors should not spend more than a few hours on a document before
 sharing. Terrible ideas will be weeded out during early iterations, while the
 document is not polished.
 
+Questions from early reviewers really show where the document is missing details
+or is making weak assumptions. Make sure those are addressed in the document
+directly, rather than just replying to the questions during the review.
+
 In case formal review and approval is necessary, this can be done during later
 iterations, when most of the target audience has already seen and discussed the
-contents. This makes the review process easier.
+contents. This ensures a smoother review.
 
 ## Structure
 
