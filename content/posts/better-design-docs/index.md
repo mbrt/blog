@@ -60,8 +60,7 @@ In this context, the **key purposes** of a design doc are instead:
 
 1. **Improve the understanding** of a problem and its domain (of author and
    reviewers).
-2. **Drive alignment**, to get to a better solution faster (and more cheaply)
-   than trial and error.
+2. **Drive alignment**, to get to a better solution faster than trial and error.
 
 Although these are the main goals that we'll use to build our guiding
 principles, good design docs come with side benefits:
@@ -293,6 +292,28 @@ therefore add a specific section for that.
 Note also that this structure will not work for retrospectives, nor project
 proposals, where the emphasis is on different points (the past in the former,
 the responsibilities and problem analysis in the latter).
+
+## Handling feedback
+
+Assuming you picked your audience correctly (i.e. it’s not too broad and
+includes experts in the relevant fields), you should expect to get relevant
+feedback. How do you make the best use of it? I would start by dividing it in
+three major categories:
+
+1. Deal-breakers or asks for major changes.
+2. Questions.
+3. Bike-shedding.
+
+You should treat the first category, major concerns, with major attention. If
+the proposal turns out to be infeasible, abandon it. If it can be reworked,
+pause the review and do so. Likewise, pay attention to the second category. When
+people ask questions and are not sure about what you’re saying, it’s usually an
+indication that some context is missing, or the prose is unclear. Make sure you
+fix the text, rework the structure or add glossary and pointers, so that the
+same questions don’t pop up over and over. On the contrary, feel free to
+disregard comments in the third category (insisting on irrelevant details, or
+not useful). You should own the review process. Don’t get dragged into
+irrelevant discussions.
 
 ## Alternatives
 
