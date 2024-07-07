@@ -269,6 +269,46 @@ In case formal review and approval is necessary, this can be done during later
 iterations, when most of the target audience has already seen and discussed the
 contents. This ensures a smoother review.
 
+### Finding the audience
+
+How do you know which reviewers to pick? The most critical decision to make is
+to distinguish between reviewers and people that should simply be informed about
+the change. The list of reviewers should be minimal, while still being able to
+collect quality feedback. Don’t make the mistake of e.g. asking for a review to
+the whole engineering org (assuming it’s a big one). Not all readers need to be
+reviewers. This extended audience can safely be a lot bigger. If possible, keep
+the document open for everyone to read. This improves knowledge sharing and
+contributes to a culture of openness.
+
+Yes, but who to pick? This is highly context dependent (not only company, but
+team and project wise). In any case, your team is usually a good start. If there
+are other teams affected by the proposal, it’s also usually a good idea to
+involve them (unless they are too many). In case of doubts don’t hesitate
+contacting your tech lead, manager or other leads in the relevant areas. They
+should be able to direct you to the actual experts you need.
+
+### Handling feedback
+
+Assuming you picked your audience correctly (i.e. includes experts in the
+relevant fields and it’s not too broad), you should expect to get relevant
+feedback. We can divide it in three major categories and try to make the best
+use of it:
+
+1. Deal-breakers or asks for major changes.
+2. Questions.
+3. Bike-shedding.
+
+You should treat the first category, major concerns, with major attention. If
+the proposal turns out to be infeasible, abandon it. If it can be reworked,
+pause the review and do so. Likewise, pay attention to the second category. When
+people ask questions and are unsure about what you’re saying, it’s often an
+indication that context is missing, or the prose is unclear. Make sure you fix
+the text, rework the structure or add glossary and pointers, so that the same
+questions don’t pop up again and again. On the contrary, feel free to disregard
+comments in the third category (insisting on irrelevant details, or not useful).
+You should own the review process. Don’t get dragged into irrelevant
+discussions.
+
 ## Structure
 
 There's no perfect structure. You'll see that different formats are used or even
@@ -292,28 +332,6 @@ therefore add a specific section for that.
 Note also that this structure will not work for retrospectives, nor project
 proposals, where the emphasis is on different points (the past in the former,
 the responsibilities and problem analysis in the latter).
-
-## Handling feedback
-
-Assuming you picked your audience correctly (i.e. it’s not too broad and
-includes experts in the relevant fields), you should expect to get relevant
-feedback. How do you make the best use of it? I would start by dividing it in
-three major categories:
-
-1. Deal-breakers or asks for major changes.
-2. Questions.
-3. Bike-shedding.
-
-You should treat the first category, major concerns, with major attention. If
-the proposal turns out to be infeasible, abandon it. If it can be reworked,
-pause the review and do so. Likewise, pay attention to the second category. When
-people ask questions and are not sure about what you’re saying, it’s usually an
-indication that some context is missing, or the prose is unclear. Make sure you
-fix the text, rework the structure or add glossary and pointers, so that the
-same questions don’t pop up over and over. On the contrary, feel free to
-disregard comments in the third category (insisting on irrelevant details, or
-not useful). You should own the review process. Don’t get dragged into
-irrelevant discussions.
 
 ## Alternatives
 
