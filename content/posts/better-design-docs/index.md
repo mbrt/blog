@@ -430,6 +430,7 @@ In writing this, I also took inspiration from the following references:
   writer](https://web.archive.org/web/20230521020635/https://dilbertblog.typepad.com/the_dilbert_blog/2007/06/the_day_you_bec.html).
 * [Design docs at
   Google](https://www.industrialempathy.com/posts/design-docs-at-google/).
+* William Zinsser, [On writing well](https://www.goodreads.com/book/show/53343.On_Writing_Well).
 * [Kubernetes KEP
   process](https://github.com/kubernetes/enhancements/blob/91fb85c4084bcc89d524fd9d8cd4152e7577b65d/keps/README.md).
 * [Rust RFC process](https://github.com/rust-lang/rfcs).
