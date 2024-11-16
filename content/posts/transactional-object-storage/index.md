@@ -656,6 +656,23 @@ any change in values, nor in the state of locks, we can avoid writing a
 transaction log as well. The happy path requires no writes and just one value
 plus one metadata read per key.
 
+This approach is different from the one taken by Spanner, which implements
+[Multiversion concurrency
+control](https://en.wikipedia.org/wiki/Multiversion_concurrency_control). MVCC
+allows reads to go much faster, by reading a *consistent* snapshot of the
+database. This is hard to do correctly, because the
+[linearizable](https://jepsen.io/consistency/models/linearizable) consistency of
+the database depends on picking a version compatible with the real time ordering
+of all transactions globally. Picking anything older than that would lead to
+weaker consistency models. Spanner achieves this [the hard
+way](https://timilearning.com/posts/mit-6.824/lecture-13-spanner/#read-only-transactions),
+through atomic clocks and bounded time uncertainty.
+
+Given that we don't keep multiple versions of objects and we don't have access
+to atomic clocks, nor we have transactions coordinators, I chose to revert to
+two-phase locking in case of any conflicts. This makes sure we stay in the
+strict serializability isolation level.
+
 ### Single read-modify-write
 
 We can optimize transactions that read and write to a single key by using native
@@ -728,11 +745,17 @@ Exception being with higher levels of contention.
 ## Is that all?
 
 The article is pretty long, and even if it doesn't cover everything – and I
-would have really liked to talk about testing, correctness, profiling and more
-optimizations – it covers the most important aspects of the design. I hope I was
-able to transmit some of the key lessons I learned along the way and demystified
-some of the opaque sounding, but actually not so hard to understand,
-terminology, used and abused in database design and classification.
+would have really liked to talk about the source code, testing, correctness,
+profiling and more optimizations – it covers the most important aspects of the
+design. I hope I was able to transmit some of the key lessons I learned along
+the way and demystified some of the opaque sounding, but actually not so hard to
+understand, terminology, used and abused in database design and classification.
+
+If you want to explore some of the source code, I recommend starting from the
+[transaction
+algorithm](https://github.com/mbrt/glassdb/blob/920129dabc5164b70c9dc04817a97cb67f4f609f/internal/trans/algo.go#L116).
+There aren't many comments, but hey it's written in Go, it should be
+understandable :)
 
 One more thing: did I forget about S3? At the beginning, I praised how easy it
 would be to have the same solution across cloud providers. Did this come to
