@@ -4,107 +4,100 @@
     <title>Tags on mbrt blog</title>
     <link>https://blog.mbrt.dev/tags/</link>
     <description>Recent content in Tags on mbrt blog</description>
-    <generator>Hugo -- gohugo.io</generator>
+    <generator>Hugo -- 0.138.0</generator>
     <language>en</language>
-    <lastBuildDate>Tue, 11 Jun 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 16 Nov 2024 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://blog.mbrt.dev/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Cloud</title>
+      <link>https://blog.mbrt.dev/tags/cloud/</link>
+      <pubDate>Sat, 16 Nov 2024 00:00:00 +0000</pubDate>
+      <guid>https://blog.mbrt.dev/tags/cloud/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Db</title>
+      <link>https://blog.mbrt.dev/tags/db/</link>
+      <pubDate>Sat, 16 Nov 2024 00:00:00 +0000</pubDate>
+      <guid>https://blog.mbrt.dev/tags/db/</guid>
+      <description></description>
+    </item>
     <item>
       <title>Design</title>
       <link>https://blog.mbrt.dev/tags/design/</link>
-      <pubDate>Tue, 11 Jun 2024 00:00:00 +0000</pubDate>
-      
+      <pubDate>Sat, 16 Nov 2024 00:00:00 +0000</pubDate>
       <guid>https://blog.mbrt.dev/tags/design/</guid>
       <description></description>
     </item>
-    
     <item>
       <title>Sre</title>
       <link>https://blog.mbrt.dev/tags/sre/</link>
       <pubDate>Sun, 17 Dec 2023 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/tags/sre/</guid>
       <description></description>
     </item>
-    
     <item>
       <title>Chess</title>
       <link>https://blog.mbrt.dev/tags/chess/</link>
       <pubDate>Fri, 28 May 2021 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/tags/chess/</guid>
       <description></description>
     </item>
-    
     <item>
       <title>Data-Science</title>
       <link>https://blog.mbrt.dev/tags/data-science/</link>
       <pubDate>Fri, 28 May 2021 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/tags/data-science/</guid>
       <description></description>
     </item>
-    
     <item>
       <title>Containers</title>
       <link>https://blog.mbrt.dev/tags/containers/</link>
       <pubDate>Sun, 01 Oct 2017 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/tags/containers/</guid>
       <description></description>
     </item>
-    
     <item>
       <title>Linux</title>
       <link>https://blog.mbrt.dev/tags/linux/</link>
       <pubDate>Sun, 01 Oct 2017 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/tags/linux/</guid>
       <description></description>
     </item>
-    
     <item>
       <title>C&#43;&#43;</title>
       <link>https://blog.mbrt.dev/tags/c&#43;&#43;/</link>
       <pubDate>Fri, 07 Jul 2017 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/tags/c&#43;&#43;/</guid>
       <description></description>
     </item>
-    
     <item>
       <title>Code-Review</title>
       <link>https://blog.mbrt.dev/tags/code-review/</link>
       <pubDate>Fri, 07 Jul 2017 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/tags/code-review/</guid>
       <description></description>
     </item>
-    
     <item>
       <title>Raspberry-Pi</title>
       <link>https://blog.mbrt.dev/tags/raspberry-pi/</link>
       <pubDate>Fri, 07 Jul 2017 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/tags/raspberry-pi/</guid>
       <description></description>
     </item>
-    
     <item>
       <title>Rust</title>
       <link>https://blog.mbrt.dev/tags/rust/</link>
       <pubDate>Thu, 01 Dec 2016 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/tags/rust/</guid>
       <description></description>
     </item>
-    
     <item>
       <title>Reversing</title>
       <link>https://blog.mbrt.dev/tags/reversing/</link>
       <pubDate>Tue, 18 Aug 2015 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/tags/reversing/</guid>
       <description></description>
     </item>
-    
   </channel>
 </rss>

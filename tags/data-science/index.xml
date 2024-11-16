@@ -4,17 +4,22 @@
     <title>Data-Science on mbrt blog</title>
     <link>https://blog.mbrt.dev/tags/data-science/</link>
     <description>Recent content in Data-Science on mbrt blog</description>
-    <generator>Hugo -- gohugo.io</generator>
+    <generator>Hugo -- 0.138.0</generator>
     <language>en</language>
-    <lastBuildDate>Fri, 28 May 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/tags/data-science/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Fri, 28 May 2021 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://blog.mbrt.dev/tags/data-science/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Engineering a chess match against my brother</title>
       <link>https://blog.mbrt.dev/posts/chess-eng/</link>
       <pubDate>Fri, 28 May 2021 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/posts/chess-eng/</guid>
-      <description>This is the story of me trying to win a game of chess against my brother. A single freaking game. What&amp;rsquo;s so special about it? Am I good at chess? Not at all. Did I improve at my game in the process? Also no. Is it a story about &amp;ldquo;the journey rather than the destination&amp;rdquo;? Not really. Did I at least have fun in the process? Not so sure. This is the story of me trying to be unconventional at probably the most studied game in existence and using my software engineering background for something that probably doesn&amp;rsquo;t need it.</description>
+      <description>&lt;p&gt;This is the story of me trying to win a game of chess against my brother. A
+single freaking game. What&amp;rsquo;s so special about it? Am I good at chess? Not at
+all. Did I improve at my game in the process? Also no. Is it a story about &amp;ldquo;the
+journey rather than the destination&amp;rdquo;? Not really. Did I at least have fun in
+the process? Not so sure. This is the story of me trying to be unconventional
+at probably the most studied game in existence and using my software
+engineering background for something that probably doesn&amp;rsquo;t need it.&lt;/p&gt;</description>
     </item>
-    
   </channel>
 </rss>
