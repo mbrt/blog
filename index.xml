@@ -4,77 +4,126 @@
     <title>mbrt blog</title>
     <link>https://blog.mbrt.dev/</link>
     <description>Recent content on mbrt blog</description>
-    <generator>Hugo -- gohugo.io</generator>
+    <generator>Hugo -- 0.138.0</generator>
     <language>en</language>
-    <lastBuildDate>Tue, 11 Jun 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 16 Nov 2024 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://blog.mbrt.dev/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Glassdb: transactional object storage</title>
+      <link>https://blog.mbrt.dev/posts/transactional-object-storage/</link>
+      <pubDate>Sat, 16 Nov 2024 00:00:00 +0000</pubDate>
+      <guid>https://blog.mbrt.dev/posts/transactional-object-storage/</guid>
+      <description>&lt;p&gt;I was frustrated by the gap between stateless and stateful applications in the
+cloud. While I could easily spin up a stateless application as a &amp;ldquo;serverless&amp;rdquo;
+function in any major cloud provider and pretty much forget about it, persisting
+data between requests was a game of pick two among three: cheap, strongly
+consistent, portable.&lt;/p&gt;
+&lt;p&gt;Could I solve portability and lack of transactions myself with &lt;em&gt;a single
+client-side solution?&lt;/em&gt; I thought it would be possible through object storage:
+cheap, strongly consistent and ubiquitous.&lt;/p&gt;</description>
+    </item>
     <item>
       <title>Better design docs</title>
       <link>https://blog.mbrt.dev/posts/better-design-docs/</link>
       <pubDate>Tue, 11 Jun 2024 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/posts/better-design-docs/</guid>
-      <description>What is a design document? When is it useful to have one? How to make it useful? These are the questions I&amp;rsquo;m going to address in this post. The goal is to provide some bite sized, easy to remember guidelines. My promise to you is that after this post, you&amp;rsquo;ll be faster and more effective in making and reviewing designs.
-This is a written version of a talk I gave at my current employer.</description>
+      <description>&lt;p&gt;&lt;strong&gt;What&lt;/strong&gt; is a design document? &lt;strong&gt;When&lt;/strong&gt; is it useful to have one? &lt;strong&gt;How&lt;/strong&gt; to
+make it useful? These are the questions I&amp;rsquo;m going to address in this post. The
+goal is to provide some bite sized, easy to remember guidelines. My promise to
+you is that after this post, you&amp;rsquo;ll be faster and more effective in making and
+reviewing designs.&lt;/p&gt;
+&lt;p&gt;This is a written version of a talk I gave at my current employer. Since it was
+well received and helped a few folks, I decided to make it more available.&lt;/p&gt;</description>
     </item>
-    
     <item>
       <title>Maybe you don&#39;t need SRE</title>
       <link>https://blog.mbrt.dev/posts/no-need-sre/</link>
       <pubDate>Sun, 17 Dec 2023 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/posts/no-need-sre/</guid>
-      <description>Running a Site Reliability Engineering (SRE) organization correctly is difficult and expensive. Spare the frustration, perhaps what you need is Sysadmins.
-Since the term was coined by Ben Treynor in 2003 at Google, lots of ink was spent on praising SRE practices. Not enough on when it is appropriate to have SREs. This post is a take on that angle.
-Disclaimer: I was an SRE at Google and this piece represents only my own views.</description>
+      <description>&lt;p&gt;Running a Site Reliability Engineering (SRE) organization correctly is difficult
+and expensive. Spare the frustration, perhaps what you need is Sysadmins.&lt;/p&gt;
+&lt;p&gt;Since the term was coined by Ben Treynor in 2003 at Google, lots of ink was
+spent on praising SRE practices. Not enough on &lt;em&gt;when&lt;/em&gt; it is appropriate to have
+SREs. This post is a take on that angle.&lt;/p&gt;
+&lt;p&gt;Disclaimer: I was an SRE at Google and this piece represents only my own views.&lt;/p&gt;</description>
     </item>
-    
     <item>
       <title>Engineering a chess match against my brother</title>
       <link>https://blog.mbrt.dev/posts/chess-eng/</link>
       <pubDate>Fri, 28 May 2021 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/posts/chess-eng/</guid>
-      <description>This is the story of me trying to win a game of chess against my brother. A single freaking game. What&amp;rsquo;s so special about it? Am I good at chess? Not at all. Did I improve at my game in the process? Also no. Is it a story about &amp;ldquo;the journey rather than the destination&amp;rdquo;? Not really. Did I at least have fun in the process? Not so sure. This is the story of me trying to be unconventional at probably the most studied game in existence and using my software engineering background for something that probably doesn&amp;rsquo;t need it.</description>
+      <description>&lt;p&gt;This is the story of me trying to win a game of chess against my brother. A
+single freaking game. What&amp;rsquo;s so special about it? Am I good at chess? Not at
+all. Did I improve at my game in the process? Also no. Is it a story about &amp;ldquo;the
+journey rather than the destination&amp;rdquo;? Not really. Did I at least have fun in
+the process? Not so sure. This is the story of me trying to be unconventional
+at probably the most studied game in existence and using my software
+engineering background for something that probably doesn&amp;rsquo;t need it.&lt;/p&gt;</description>
     </item>
-    
     <item>
       <title>Demystifying container networking</title>
       <link>https://blog.mbrt.dev/posts/container-network/</link>
       <pubDate>Sun, 01 Oct 2017 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/posts/container-network/</guid>
-      <description>Over the last year, at work I had multiple chances to debug how containers work. Recently we had to solve some networking problems a customer had with Kubernetes, and I decided I wanted to know more. Once the problem was solved, I spent more time on investigating what is actually going on under the hood. After seeing the wonderful Eric Chiang and Laurent Bernaille talks, and reading through the very informative posts by Lizzie Dixon and Julia Evans (that I really really recommend), I got enough information about how a container is created and managed.</description>
+      <description>&lt;p&gt;Over the last year, at work I had multiple chances to debug how containers work.
+Recently we had to solve some networking problems a customer had with
+&lt;a href=&#34;https://kubernetes.io/&#34;&gt;Kubernetes&lt;/a&gt;, and I decided I wanted to know more. Once
+the problem was solved, I spent more time on investigating what is actually
+going on under the hood. After seeing the wonderful
+&lt;a href=&#34;https://youtu.be/wyqoi52k5jM&#34;&gt;Eric Chiang&lt;/a&gt; and
+&lt;a href=&#34;https://youtu.be/b3XDl0YsVsg&#34;&gt;Laurent Bernaille&lt;/a&gt; talks, and reading through
+the very informative posts by
+&lt;a href=&#34;https://blog.lizzie.io/linux-containers-in-500-loc.html&#34;&gt;Lizzie Dixon&lt;/a&gt; and
+&lt;a href=&#34;http://jvns.ca/blog/2016/10/10/what-even-is-a-container/&#34;&gt;Julia Evans&lt;/a&gt;
+(that I really really recommend), I got enough information about how a
+container is created and managed. I&amp;rsquo;m going to rip off and mix some stuff from
+their awesome posts in the first part of mine.&lt;/p&gt;</description>
     </item>
-    
     <item>
       <title>Antifurto: home made security camera</title>
       <link>https://blog.mbrt.dev/posts/antifurto/</link>
       <pubDate>Fri, 07 Jul 2017 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/posts/antifurto/</guid>
-      <description>Introduction In February 2014 I had a very unpleasant surprise after coming back home from a weekend in Berlin. Me and my girlfriend found out our apartment upside down because of burglars. We suffered the loss not only of many of our belongings, but worse, of our safety. We didn&amp;rsquo;t feel safe in our home and we didn&amp;rsquo;t feel safe to leave it - not even for half an hour - for the fear to come back and find somebody inside.</description>
+      <description>&lt;h1 id=&#34;introduction&#34;&gt;Introduction&lt;/h1&gt;
+&lt;p&gt;In February 2014 I had a very unpleasant surprise after coming back home from a
+weekend in Berlin. Me and my girlfriend found out our apartment upside down
+because of burglars. We suffered the loss not only of many of our belongings,
+but worse, of our safety. We didn&amp;rsquo;t feel safe in our home and we didn&amp;rsquo;t feel
+safe to leave it - not even for half an hour - for the fear to come back and
+find somebody inside. It was with this mood that I started this project: totally
+motivated to do something about it.&lt;/p&gt;</description>
     </item>
-    
     <item>
       <title>Ripgrep code review</title>
       <link>https://blog.mbrt.dev/posts/ripgrep/</link>
       <pubDate>Thu, 01 Dec 2016 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/posts/ripgrep/</guid>
-      <description>I&amp;rsquo;ve been playing around with Rust for a year and a half, and the best part of it, like many others say, has been the very helpful community. There are a lot of online resources that help you to get started: the Rust book, the Rustonomicon and many blog posts and stack overflow questions. After I learned the basics I felt a bit lost though. I couldn&amp;rsquo;t find enough resources for intermediate-level-Rustaceans.</description>
+      <description>&lt;p&gt;I&amp;rsquo;ve been playing around with &lt;a href=&#34;https://www.rust-lang.org&#34;&gt;Rust&lt;/a&gt; for a year and a
+half, and the best part of it, like many others say, has been the very helpful
+community. There are a lot of online resources that help you to get started: the
+&lt;a href=&#34;https://doc.rust-lang.org/book/&#34;&gt;Rust book&lt;/a&gt;, the
+&lt;a href=&#34;https://doc.rust-lang.org/nomicon/&#34;&gt;Rustonomicon&lt;/a&gt; and many
+&lt;a href=&#34;https://this-week-in-rust.org/&#34;&gt;blog posts&lt;/a&gt; and
+&lt;a href=&#34;http://stackoverflow.com/questions/tagged/rust&#34;&gt;stack overflow questions&lt;/a&gt;.
+After I learned the
+basics I felt a bit lost though. I couldn&amp;rsquo;t find enough resources for
+intermediate-level-Rustaceans. I&amp;rsquo;m a C++ developer in my daily job, and so I&amp;rsquo;m
+used with books like &lt;a href=&#34;http://www.aristeia.com/books.html&#34;&gt;Effective C++&lt;/a&gt; from
+Scott Meyers, the &lt;a href=&#34;https://herbsutter.com/&#34;&gt;Herb Sutter&amp;rsquo;s blog&lt;/a&gt; and a lot of
+online resources that always helped me with advanced C++ topics (that are a
+lot&amp;hellip; :sigh:). Those resources teach you how to get the best from the
+language, how to use it properly, and how to structure your code to be more
+clear and effective. Those resources are not completely absent in the Rust
+community, but neither common.&lt;/p&gt;</description>
     </item>
-    
     <item>
       <title>Keygenning with KLEE [doar-e]</title>
       <link>https://blog.mbrt.dev/posts/keygen/</link>
       <pubDate>Tue, 18 Aug 2015 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/posts/keygen/</guid>
-      <description>This was published in the Diary of a reverse-engineer as a guest post:
-Keygenning with KLEE</description>
+      <description>&lt;p&gt;This was published in the
+&lt;a href=&#34;https://doar-e.github.io&#34;&gt;Diary of a reverse-engineer&lt;/a&gt; as a guest post:&lt;/p&gt;
+&lt;p&gt;&lt;a href=&#34;https://doar-e.github.io/blog/2015/08/18/keygenning-with-klee/&#34;&gt;Keygenning with KLEE&lt;/a&gt;&lt;/p&gt;</description>
     </item>
-    
-    
-    
   </channel>
 </rss>

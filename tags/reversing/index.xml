@@ -4,18 +4,18 @@
     <title>Reversing on mbrt blog</title>
     <link>https://blog.mbrt.dev/tags/reversing/</link>
     <description>Recent content in Reversing on mbrt blog</description>
-    <generator>Hugo -- gohugo.io</generator>
+    <generator>Hugo -- 0.138.0</generator>
     <language>en</language>
-    <lastBuildDate>Tue, 18 Aug 2015 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/tags/reversing/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Tue, 18 Aug 2015 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://blog.mbrt.dev/tags/reversing/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Keygenning with KLEE [doar-e]</title>
       <link>https://blog.mbrt.dev/posts/keygen/</link>
       <pubDate>Tue, 18 Aug 2015 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/posts/keygen/</guid>
-      <description>This was published in the Diary of a reverse-engineer as a guest post:
-Keygenning with KLEE</description>
+      <description>&lt;p&gt;This was published in the
+&lt;a href=&#34;https://doar-e.github.io&#34;&gt;Diary of a reverse-engineer&lt;/a&gt; as a guest post:&lt;/p&gt;
+&lt;p&gt;&lt;a href=&#34;https://doar-e.github.io/blog/2015/08/18/keygenning-with-klee/&#34;&gt;Keygenning with KLEE&lt;/a&gt;&lt;/p&gt;</description>
     </item>
-    
   </channel>
 </rss>

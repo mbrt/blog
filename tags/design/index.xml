@@ -4,18 +4,36 @@
     <title>Design on mbrt blog</title>
     <link>https://blog.mbrt.dev/tags/design/</link>
     <description>Recent content in Design on mbrt blog</description>
-    <generator>Hugo -- gohugo.io</generator>
+    <generator>Hugo -- 0.138.0</generator>
     <language>en</language>
-    <lastBuildDate>Tue, 11 Jun 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/tags/design/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 16 Nov 2024 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://blog.mbrt.dev/tags/design/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Glassdb: transactional object storage</title>
+      <link>https://blog.mbrt.dev/posts/transactional-object-storage/</link>
+      <pubDate>Sat, 16 Nov 2024 00:00:00 +0000</pubDate>
+      <guid>https://blog.mbrt.dev/posts/transactional-object-storage/</guid>
+      <description>&lt;p&gt;I was frustrated by the gap between stateless and stateful applications in the
+cloud. While I could easily spin up a stateless application as a &amp;ldquo;serverless&amp;rdquo;
+function in any major cloud provider and pretty much forget about it, persisting
+data between requests was a game of pick two among three: cheap, strongly
+consistent, portable.&lt;/p&gt;
+&lt;p&gt;Could I solve portability and lack of transactions myself with &lt;em&gt;a single
+client-side solution?&lt;/em&gt; I thought it would be possible through object storage:
+cheap, strongly consistent and ubiquitous.&lt;/p&gt;</description>
+    </item>
     <item>
       <title>Better design docs</title>
       <link>https://blog.mbrt.dev/posts/better-design-docs/</link>
       <pubDate>Tue, 11 Jun 2024 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/posts/better-design-docs/</guid>
-      <description>What is a design document? When is it useful to have one? How to make it useful? These are the questions I&amp;rsquo;m going to address in this post. The goal is to provide some bite sized, easy to remember guidelines. My promise to you is that after this post, you&amp;rsquo;ll be faster and more effective in making and reviewing designs.
-This is a written version of a talk I gave at my current employer.</description>
+      <description>&lt;p&gt;&lt;strong&gt;What&lt;/strong&gt; is a design document? &lt;strong&gt;When&lt;/strong&gt; is it useful to have one? &lt;strong&gt;How&lt;/strong&gt; to
+make it useful? These are the questions I&amp;rsquo;m going to address in this post. The
+goal is to provide some bite sized, easy to remember guidelines. My promise to
+you is that after this post, you&amp;rsquo;ll be faster and more effective in making and
+reviewing designs.&lt;/p&gt;
+&lt;p&gt;This is a written version of a talk I gave at my current employer. Since it was
+well received and helped a few folks, I decided to make it more available.&lt;/p&gt;</description>
     </item>
-    
   </channel>
 </rss>

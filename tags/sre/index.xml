@@ -4,19 +4,21 @@
     <title>Sre on mbrt blog</title>
     <link>https://blog.mbrt.dev/tags/sre/</link>
     <description>Recent content in Sre on mbrt blog</description>
-    <generator>Hugo -- gohugo.io</generator>
+    <generator>Hugo -- 0.138.0</generator>
     <language>en</language>
-    <lastBuildDate>Sun, 17 Dec 2023 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/tags/sre/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sun, 17 Dec 2023 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://blog.mbrt.dev/tags/sre/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Maybe you don&#39;t need SRE</title>
       <link>https://blog.mbrt.dev/posts/no-need-sre/</link>
       <pubDate>Sun, 17 Dec 2023 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/posts/no-need-sre/</guid>
-      <description>Running a Site Reliability Engineering (SRE) organization correctly is difficult and expensive. Spare the frustration, perhaps what you need is Sysadmins.
-Since the term was coined by Ben Treynor in 2003 at Google, lots of ink was spent on praising SRE practices. Not enough on when it is appropriate to have SREs. This post is a take on that angle.
-Disclaimer: I was an SRE at Google and this piece represents only my own views.</description>
+      <description>&lt;p&gt;Running a Site Reliability Engineering (SRE) organization correctly is difficult
+and expensive. Spare the frustration, perhaps what you need is Sysadmins.&lt;/p&gt;
+&lt;p&gt;Since the term was coined by Ben Treynor in 2003 at Google, lots of ink was
+spent on praising SRE practices. Not enough on &lt;em&gt;when&lt;/em&gt; it is appropriate to have
+SREs. This post is a take on that angle.&lt;/p&gt;
+&lt;p&gt;Disclaimer: I was an SRE at Google and this piece represents only my own views.&lt;/p&gt;</description>
     </item>
-    
   </channel>
 </rss>

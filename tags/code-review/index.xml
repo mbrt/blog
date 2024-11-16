@@ -4,26 +4,46 @@
     <title>Code-Review on mbrt blog</title>
     <link>https://blog.mbrt.dev/tags/code-review/</link>
     <description>Recent content in Code-Review on mbrt blog</description>
-    <generator>Hugo -- gohugo.io</generator>
+    <generator>Hugo -- 0.138.0</generator>
     <language>en</language>
-    <lastBuildDate>Fri, 07 Jul 2017 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.mbrt.dev/tags/code-review/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Fri, 07 Jul 2017 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://blog.mbrt.dev/tags/code-review/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Antifurto: home made security camera</title>
       <link>https://blog.mbrt.dev/posts/antifurto/</link>
       <pubDate>Fri, 07 Jul 2017 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/posts/antifurto/</guid>
-      <description>Introduction In February 2014 I had a very unpleasant surprise after coming back home from a weekend in Berlin. Me and my girlfriend found out our apartment upside down because of burglars. We suffered the loss not only of many of our belongings, but worse, of our safety. We didn&amp;rsquo;t feel safe in our home and we didn&amp;rsquo;t feel safe to leave it - not even for half an hour - for the fear to come back and find somebody inside.</description>
+      <description>&lt;h1 id=&#34;introduction&#34;&gt;Introduction&lt;/h1&gt;
+&lt;p&gt;In February 2014 I had a very unpleasant surprise after coming back home from a
+weekend in Berlin. Me and my girlfriend found out our apartment upside down
+because of burglars. We suffered the loss not only of many of our belongings,
+but worse, of our safety. We didn&amp;rsquo;t feel safe in our home and we didn&amp;rsquo;t feel
+safe to leave it - not even for half an hour - for the fear to come back and
+find somebody inside. It was with this mood that I started this project: totally
+motivated to do something about it.&lt;/p&gt;</description>
     </item>
-    
     <item>
       <title>Ripgrep code review</title>
       <link>https://blog.mbrt.dev/posts/ripgrep/</link>
       <pubDate>Thu, 01 Dec 2016 00:00:00 +0000</pubDate>
-      
       <guid>https://blog.mbrt.dev/posts/ripgrep/</guid>
-      <description>I&amp;rsquo;ve been playing around with Rust for a year and a half, and the best part of it, like many others say, has been the very helpful community. There are a lot of online resources that help you to get started: the Rust book, the Rustonomicon and many blog posts and stack overflow questions. After I learned the basics I felt a bit lost though. I couldn&amp;rsquo;t find enough resources for intermediate-level-Rustaceans.</description>
+      <description>&lt;p&gt;I&amp;rsquo;ve been playing around with &lt;a href=&#34;https://www.rust-lang.org&#34;&gt;Rust&lt;/a&gt; for a year and a
+half, and the best part of it, like many others say, has been the very helpful
+community. There are a lot of online resources that help you to get started: the
+&lt;a href=&#34;https://doc.rust-lang.org/book/&#34;&gt;Rust book&lt;/a&gt;, the
+&lt;a href=&#34;https://doc.rust-lang.org/nomicon/&#34;&gt;Rustonomicon&lt;/a&gt; and many
+&lt;a href=&#34;https://this-week-in-rust.org/&#34;&gt;blog posts&lt;/a&gt; and
+&lt;a href=&#34;http://stackoverflow.com/questions/tagged/rust&#34;&gt;stack overflow questions&lt;/a&gt;.
+After I learned the
+basics I felt a bit lost though. I couldn&amp;rsquo;t find enough resources for
+intermediate-level-Rustaceans. I&amp;rsquo;m a C++ developer in my daily job, and so I&amp;rsquo;m
+used with books like &lt;a href=&#34;http://www.aristeia.com/books.html&#34;&gt;Effective C++&lt;/a&gt; from
+Scott Meyers, the &lt;a href=&#34;https://herbsutter.com/&#34;&gt;Herb Sutter&amp;rsquo;s blog&lt;/a&gt; and a lot of
+online resources that always helped me with advanced C++ topics (that are a
+lot&amp;hellip; :sigh:). Those resources teach you how to get the best from the
+language, how to use it properly, and how to structure your code to be more
+clear and effective. Those resources are not completely absent in the Rust
+community, but neither common.&lt;/p&gt;</description>
     </item>
-    
   </channel>
 </rss>
