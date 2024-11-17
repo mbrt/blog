@@ -12,13 +12,14 @@ data between requests was a game of pick two among three: cheap, strongly
 consistent, portable.
 
 Could I solve portability and lack of transactions myself with *a single
-client-side solution?* I thought it would be possible through object storage:
-cheap, strongly consistent and ubiquitous.
+client-side solution?* I thought it would be possible through object storage
+(e.g. [AWS S3](https://aws.amazon.com/s3/)), which is strongly consistent,
+ubiquitous and cheap.
 
-I could just build a thin conversion layer between
-[DynamoDB](https://aws.amazon.com/dynamodb/) (AWS), [Cosmos
+Yes, I could rely on a "serverless database" and just build a thin conversion
+layer between [DynamoDB](https://aws.amazon.com/dynamodb/) (AWS), [Cosmos
 DB](https://azure.microsoft.com/en-us/products/cosmos-db/) (Azure) and
-[Firestore](https://firebase.google.com/docs/firestore/) (GCP), so does it make
+[Firestore](https://firebase.google.com/docs/firestore/) (GCP). So, does it make
 sense to instead reinvent a database almost from scratch? Not in a practical
 sense, but think about it this way: I learned a lot about database design, so it
 was still worth it, and I think you will find my journey useful too.
