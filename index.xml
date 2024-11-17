@@ -19,8 +19,9 @@ function in any major cloud provider and pretty much forget about it, persisting
 data between requests was a game of pick two among three: cheap, strongly
 consistent, portable.&lt;/p&gt;
 &lt;p&gt;Could I solve portability and lack of transactions myself with &lt;em&gt;a single
-client-side solution?&lt;/em&gt; I thought it would be possible through object storage:
-cheap, strongly consistent and ubiquitous.&lt;/p&gt;</description>
+client-side solution?&lt;/em&gt; I thought it would be possible through object storage
+(e.g. &lt;a href=&#34;https://aws.amazon.com/s3/&#34;&gt;AWS S3&lt;/a&gt;), which is strongly consistent,
+ubiquitous and cheap.&lt;/p&gt;</description>
     </item>
     <item>
       <title>Better design docs</title>
