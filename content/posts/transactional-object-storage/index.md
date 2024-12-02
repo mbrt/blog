@@ -768,6 +768,8 @@ updates with respect to AWS S3.
 Well, no problem. I learned something and solved something. The rest can wait
 for another release.
 
+Feedback on [Hacker News](https://news.ycombinator.com/item?id=42164058).
+
 
 [^1]:  See [Introduction to Isolation Levels](https://fauna.com/blog/introduction-to-transaction-isolation-levels) in the Fauna blog for more details on this.
 
