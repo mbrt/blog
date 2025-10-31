@@ -1,6 +1,5 @@
 baseURL: "https://blog.mbrt.dev/"
 title: mbrt blog
-paginate: 5
 theme: PaperMod
 
 enableInlineShortcodes: true
@@ -9,6 +8,9 @@ buildDrafts: false
 buildFuture: false
 buildExpired: false
 enableEmoji: true
+
+pagination:
+  pagerSize: 5
 
 minify:
   disableXML: true
@@ -40,7 +42,6 @@ params:
   env: production # to enable google analytics, opengraph, twitter-cards and schema.
   description: "mbrt personal blog"
   author: Michele Bertasi
-  cover: "me.jpg"
   coverAlt: "Picture of a real world pirate."
 
   defaultTheme: auto
@@ -92,5 +93,5 @@ markup:
     style: dracula
 
 services:
-  twitter:
+  x:
     disableInlineCSS: true
