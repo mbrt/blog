@@ -4,10 +4,26 @@
     <title>mbrt blog</title>
     <link>https://blog.mbrt.dev/</link>
     <description>Recent content on mbrt blog</description>
-    <generator>Hugo -- 0.138.0</generator>
+    <generator>Hugo -- 0.150.1</generator>
     <language>en</language>
-    <lastBuildDate>Sat, 16 Nov 2024 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Fri, 31 Oct 2025 00:00:00 +0000</lastBuildDate>
     <atom:link href="https://blog.mbrt.dev/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Domain resurrect</title>
+      <link>https://blog.mbrt.dev/posts/domain-resurrect/</link>
+      <pubDate>Fri, 31 Oct 2025 00:00:00 +0000</pubDate>
+      <guid>https://blog.mbrt.dev/posts/domain-resurrect/</guid>
+      <description>&lt;p&gt;I processed a large fraction of the Internet on a single machine, trying to find
+some valuable but forgotten domain names to buy (probably 25 years too late).
+Here&amp;rsquo;s the story of what I found and how I did it, and &lt;strong&gt;not&lt;/strong&gt; the story of
+&lt;strong&gt;why&lt;/strong&gt; I decided to try, because I don&amp;rsquo;t know myself.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Spoiler alert&lt;/strong&gt;: If you just want to know whether there is indeed something,
+and you should scramble to scoop it up to become a
+&lt;a href=&#34;https://en.wikipedia.org/wiki/Domain_name_speculation&#34;&gt;domain-flipper&lt;/a&gt;
+billionaire, hold your horses: I believe there isn&amp;rsquo;t much. The following
+sections are more focused on the engineering side, so if you only care about the
+conclusion, skip to &lt;a href=&#34;https://blog.mbrt.dev/posts/domain-resurrect/#results&#34;&gt;Results&lt;/a&gt;.&lt;/p&gt;</description>
+    </item>
     <item>
       <title>Glassdb: transactional object storage</title>
       <link>https://blog.mbrt.dev/posts/transactional-object-storage/</link>
