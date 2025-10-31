@@ -23,7 +23,7 @@ jobs:
           hugo-version: '0.150.1'
 
       - name: Build
-        run: hugo --gc --verbose --minify
+        run: hugo --gc --logLevel debug --minify
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
