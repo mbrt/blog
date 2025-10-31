@@ -1,0 +1,2218 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="470" onload="init(evt)" viewBox="0 0 1200 470" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+	#search, #ignorecase { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:17px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching, currentSearchTerm, ignorecase, ignorecaseBtn;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		ignorecaseBtn = document.getElementById("ignorecase");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+		currentSearchTerm = null;
+
+		// use GET parameters to restore a flamegraphs state.
+		var params = get_params();
+		if (params.x && params.y)
+			zoom(find_group(document.querySelector('[x="' + params.x + '"][y="' + params.y + '"]')));
+                if (params.s) search(params.s);
+	}
+
+	// event listeners
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom(true);
+			zoom(target);
+			if (!document.querySelector('.parent')) {
+				// we have basically done a clearzoom so clear the url
+				var params = get_params();
+				if (params.x) delete params.x;
+				if (params.y) delete params.y;
+				history.replaceState(null, null, parse_params(params));
+				unzoombtn.classList.add("hide");
+				return;
+			}
+
+			// set parameters for zoom state
+			var el = target.querySelector("rect");
+			if (el && el.attributes && el.attributes.y && el.attributes._orig_x) {
+				var params = get_params()
+				params.x = el.attributes._orig_x.value;
+				params.y = el.attributes.y.value;
+				history.replaceState(null, null, parse_params(params));
+			}
+		}
+		else if (e.target.id == "unzoom") clearzoom();
+		else if (e.target.id == "search") search_prompt();
+		else if (e.target.id == "ignorecase") toggle_ignorecase();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	// ctrl-I to toggle case-sensitive search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+		else if (e.ctrlKey && e.keyCode === 73) {
+			e.preventDefault();
+			toggle_ignorecase();
+		}
+	}, false)
+
+	// functions
+	function get_params() {
+		var params = {};
+		var paramsarr = window.location.search.substr(1).split('&');
+		for (var i = 0; i < paramsarr.length; ++i) {
+			var tmp = paramsarr[i].split("=");
+			if (!tmp[0] || !tmp[1]) continue;
+			params[tmp[0]]  = decodeURIComponent(tmp[1]);
+		}
+		return params;
+	}
+	function parse_params(params) {
+		var uri = "?";
+		for (var key in params) {
+			uri += key + '=' + encodeURIComponent(params[key]) + '&';
+		}
+		if (uri.slice(-1) == "&")
+			uri = uri.substring(0, uri.length - 1);
+		if (uri == '?')
+			uri = window.location.href.split('?')[0];
+		return uri;
+	}
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 12 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		var sl = t.getSubStringLength(0, txt.length);
+		// check if only whitespace or if we can fit the entire string into width w
+		if (/^ *$/.test(txt) || sl < w)
+			return;
+
+		// this isn't perfect, but gives a good starting point
+		// and avoids calling getSubStringLength too often
+		var start = Math.floor((w/sl) * txt.length);
+		for (var x = start; x > 0; x = x-2) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (0 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+		search();
+	}
+	function unzoom(dont_update_text) {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			if(!dont_update_text) update_text(el[i]);
+		}
+		search();
+	}
+	function clearzoom() {
+		unzoom();
+
+		// remove zoom state
+		var params = get_params();
+		if (params.x) delete params.x;
+		if (params.y) delete params.y;
+		history.replaceState(null, null, parse_params(params));
+	}
+
+	// search
+	function toggle_ignorecase() {
+		ignorecase = !ignorecase;
+		if (ignorecase) {
+			ignorecaseBtn.classList.add("show");
+		} else {
+			ignorecaseBtn.classList.remove("show");
+		}
+		reset_search();
+		search();
+	}
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+		var params = get_params();
+		delete params.s;
+		history.replaceState(null, null, parse_params(params));
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)"
+			    + (ignorecase ? ", ignoring case" : "")
+			    + "\nPress Ctrl-i to toggle case sensitivity", "");
+			if (term != null) search(term);
+		} else {
+			reset_search();
+			searching = 0;
+			currentSearchTerm = null;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		if (term) currentSearchTerm = term;
+		if (currentSearchTerm === null) return;
+
+		var re = new RegExp(currentSearchTerm, ignorecase ? 'i' : '');
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+		var params = get_params();
+		params.s = currentSearchTerm;
+		history.replaceState(null, null, parse_params(params));
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="470.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="24" >Flame Graph</text>
+<text id="details" x="10.00" y="453" > </text>
+<text id="unzoom" x="10.00" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="24" >Search</text>
+<text id="ignorecase" x="1174.00" y="24" >ic</text>
+<text id="matched" x="1090.00" y="453" > </text>
+<g id="frames">
+<g >
+<title>golang.org/x/net/publicsuffix.nodeLabel (9 samples, 0.52%)</title><rect x="838.3" y="293" width="6.2" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="841.32" y="303.5" ></text>
+</g>
+<g >
+<title>strings.(*Builder).grow (3 samples, 0.17%)</title><rect x="578.1" y="197" width="2.1" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="581.15" y="207.5" ></text>
+</g>
+<g >
+<title>bufio.(*Scanner).Scan (806 samples, 46.64%)</title><rect x="10.7" y="357" width="550.4" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="13.68" y="367.5" >bufio.(*Scanner).Scan</text>
+</g>
+<g >
+<title>runtime.memequal (1 samples, 0.06%)</title><rect x="694.9" y="245" width="0.7" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="697.92" y="255.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*decompressor).moreBits (28 samples, 1.62%)</title><rect x="399.2" y="261" width="19.2" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="402.24" y="271.5" ></text>
+</g>
+<g >
+<title>internal/bytealg.MakeNoZero (1 samples, 0.06%)</title><rect x="790.5" y="261" width="0.7" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="793.52" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcache).refill (1 samples, 0.06%)</title><rect x="972.8" y="197" width="0.7" height="15.0" fill="rgb(232,124,29)" rx="2" ry="2" />
+<text  x="975.85" y="207.5" ></text>
+</g>
+<g >
+<title>bufio.(*Reader).ReadByte (11 samples, 0.64%)</title><rect x="410.8" y="245" width="7.6" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="413.84" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).alloc (3 samples, 0.17%)</title><rect x="709.9" y="213" width="2.1" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="712.94" y="223.5" ></text>
+</g>
+<g >
+<title>internal/bytealg.LastIndexByteString (5 samples, 0.29%)</title><rect x="1013.1" y="277" width="3.5" height="15.0" fill="rgb(243,175,41)" rx="2" ry="2" />
+<text  x="1016.14" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.memequal (1 samples, 0.06%)</title><rect x="647.1" y="181" width="0.7" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="650.12" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.schedule (3 samples, 0.17%)</title><rect x="1187.3" y="373" width="2.0" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="1190.27" y="383.5" ></text>
+</g>
+<g >
+<title>runtime.memmove (17 samples, 0.98%)</title><rect x="542.0" y="293" width="11.6" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="544.96" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.(*pageAlloc).update (1 samples, 0.06%)</title><rect x="1174.3" y="293" width="0.7" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="1177.29" y="303.5" ></text>
+</g>
+<g >
+<title>aeshashbody (12 samples, 0.69%)</title><rect x="621.2" y="181" width="8.2" height="15.0" fill="rgb(250,210,50)" rx="2" ry="2" />
+<text  x="624.17" y="191.5" ></text>
+</g>
+<g >
+<title>internal/stringslite.Cut (13 samples, 0.75%)</title><rect x="1127.9" y="293" width="8.8" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1130.86" y="303.5" ></text>
+</g>
+<g >
+<title>golang.org/x/net/idna.ToASCII (39 samples, 2.26%)</title><rect x="766.6" y="341" width="26.7" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="769.62" y="351.5" >g..</text>
+</g>
+<g >
+<title>github.com/klauspost/compress/snappy.Encode (4 samples, 0.23%)</title><rect x="758.4" y="245" width="2.8" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="761.43" y="255.5" ></text>
+</g>
+<g >
+<title>main.(*MapperWorker).Ingest (1,699 samples, 98.32%)</title><rect x="10.7" y="373" width="1160.2" height="15.0" fill="rgb(207,10,2)" rx="2" ry="2" />
+<text  x="13.68" y="383.5" >main.(*MapperWorker).Ingest</text>
+</g>
+<g >
+<title>runtime.systemstack (4 samples, 0.23%)</title><rect x="1172.9" y="357" width="2.8" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="1175.93" y="367.5" ></text>
+</g>
+<g >
+<title>runtime.memmove (4 samples, 0.23%)</title><rect x="100.8" y="261" width="2.8" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="103.82" y="271.5" ></text>
+</g>
+<g >
+<title>net/url.(*URL).setPath (175 samples, 10.13%)</title><rect x="885.4" y="293" width="119.5" height="15.0" fill="rgb(239,159,38)" rx="2" ry="2" />
+<text  x="888.44" y="303.5" >net/url.(*URL)..</text>
+</g>
+<g >
+<title>runtime.(*mcentral).cacheSpan (1 samples, 0.06%)</title><rect x="1166.8" y="165" width="0.7" height="15.0" fill="rgb(244,179,42)" rx="2" ry="2" />
+<text  x="1169.78" y="175.5" ></text>
+</g>
+<g >
+<title>golang.org/x/sync/errgroup.(*Group).Go.func1 (1,699 samples, 98.32%)</title><rect x="10.7" y="405" width="1160.2" height="15.0" fill="rgb(246,189,45)" rx="2" ry="2" />
+<text  x="13.68" y="415.5" >golang.org/x/sync/errgroup.(*Group).Go.func1</text>
+</g>
+<g >
+<title>runtime.mallocgcSmallScanNoHeader (1 samples, 0.06%)</title><rect x="677.2" y="181" width="0.6" height="15.0" fill="rgb(216,53,12)" rx="2" ry="2" />
+<text  x="680.16" y="191.5" ></text>
+</g>
+<g >
+<title>aeshashbody (1 samples, 0.06%)</title><rect x="564.5" y="245" width="0.7" height="15.0" fill="rgb(250,210,50)" rx="2" ry="2" />
+<text  x="567.49" y="255.5" ></text>
+</g>
+<g >
+<title>cmpbody (1 samples, 0.06%)</title><rect x="757.7" y="213" width="0.7" height="15.0" fill="rgb(218,62,14)" rx="2" ry="2" />
+<text  x="760.74" y="223.5" ></text>
+</g>
+<g >
+<title>main.(*MapperWorker).writeBatch (7 samples, 0.41%)</title><rect x="757.7" y="357" width="4.8" height="15.0" fill="rgb(250,210,50)" rx="2" ry="2" />
+<text  x="760.74" y="367.5" ></text>
+</g>
+<g >
+<title>internal/runtime/maps.newarray (1 samples, 0.06%)</title><rect x="1166.1" y="261" width="0.7" height="15.0" fill="rgb(223,85,20)" rx="2" ry="2" />
+<text  x="1169.10" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgcLarge (1 samples, 0.06%)</title><rect x="709.3" y="293" width="0.6" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
+<text  x="712.26" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.(*mspan).init (1 samples, 0.06%)</title><rect x="1082.1" y="101" width="0.7" height="15.0" fill="rgb(213,38,9)" rx="2" ry="2" />
+<text  x="1085.11" y="111.5" ></text>
+</g>
+<g >
+<title>runtime.strhash (1 samples, 0.06%)</title><rect x="1168.8" y="325" width="0.7" height="15.0" fill="rgb(237,149,35)" rx="2" ry="2" />
+<text  x="1171.83" y="335.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcentral).fullSwept (1 samples, 0.06%)</title><rect x="712.0" y="245" width="0.7" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="714.99" y="255.5" ></text>
+</g>
+<g >
+<title>os.(*File).read (1 samples, 0.06%)</title><rect x="91.3" y="213" width="0.6" height="15.0" fill="rgb(222,81,19)" rx="2" ry="2" />
+<text  x="94.26" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.(*pageAlloc).free (1 samples, 0.06%)</title><rect x="1174.3" y="309" width="0.7" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="1177.29" y="319.5" ></text>
+</g>
+<g >
+<title>runtime.slicebytetostring (1 samples, 0.06%)</title><rect x="804.9" y="293" width="0.6" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="807.86" y="303.5" ></text>
+</g>
+<g >
+<title>bufio.(*Reader).fill (1 samples, 0.06%)</title><rect x="434.1" y="229" width="0.6" height="15.0" fill="rgb(205,1,0)" rx="2" ry="2" />
+<text  x="437.06" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.growslice (1 samples, 0.06%)</title><rect x="1170.2" y="357" width="0.7" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="1173.20" y="367.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).alloc.func1 (1 samples, 0.06%)</title><rect x="709.3" y="229" width="0.6" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="712.26" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.(*mspan).initHeapBits (19 samples, 1.10%)</title><rect x="1083.5" y="181" width="12.9" height="15.0" fill="rgb(248,201,48)" rx="2" ry="2" />
+<text  x="1086.47" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.scanobject (11 samples, 0.64%)</title><rect x="1179.8" y="341" width="7.5" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
+<text  x="1182.76" y="351.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (3 samples, 0.17%)</title><rect x="470.9" y="229" width="2.1" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="473.94" y="239.5" ></text>
+</g>
+<g >
+<title>decode_ (216 samples, 12.50%)</title><rect x="561.1" y="261" width="147.5" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="564.08" y="271.5" >decode_</text>
+</g>
+<g >
+<title>runtime.mallocgc (1 samples, 0.06%)</title><rect x="1166.1" y="229" width="0.7" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="1169.10" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.memmove (65 samples, 3.76%)</title><rect x="713.4" y="309" width="44.3" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="716.36" y="319.5" >runt..</text>
+</g>
+<g >
+<title>runtime.bgsweep (11 samples, 0.64%)</title><rect x="1170.9" y="405" width="7.5" height="15.0" fill="rgb(240,165,39)" rx="2" ry="2" />
+<text  x="1173.88" y="415.5" ></text>
+</g>
+<g >
+<title>strings.Index (8 samples, 0.46%)</title><rect x="1137.4" y="309" width="5.5" height="15.0" fill="rgb(234,137,32)" rx="2" ry="2" />
+<text  x="1140.42" y="319.5" ></text>
+</g>
+<g >
+<title>net/url.shouldEscape (36 samples, 2.08%)</title><rect x="947.6" y="261" width="24.6" height="15.0" fill="rgb(248,200,47)" rx="2" ry="2" />
+<text  x="950.58" y="271.5" >n..</text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointers (1 samples, 0.06%)</title><rect x="793.3" y="277" width="0.6" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="796.25" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgcSmallScanNoHeader (1 samples, 0.06%)</title><rect x="675.1" y="165" width="0.7" height="15.0" fill="rgb(216,53,12)" rx="2" ry="2" />
+<text  x="678.12" y="175.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (1 samples, 0.06%)</title><rect x="793.3" y="309" width="0.6" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="796.25" y="319.5" ></text>
+</g>
+<g >
+<title>os.(*File).read (1 samples, 0.06%)</title><rect x="434.1" y="197" width="0.6" height="15.0" fill="rgb(222,81,19)" rx="2" ry="2" />
+<text  x="437.06" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (1 samples, 0.06%)</title><rect x="804.9" y="277" width="0.6" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="807.86" y="287.5" ></text>
+</g>
+<g >
+<title>main.(*ReaderStatsTracker).Read (1 samples, 0.06%)</title><rect x="91.3" y="229" width="0.6" height="15.0" fill="rgb(227,101,24)" rx="2" ry="2" />
+<text  x="94.26" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.nextFreeFast (4 samples, 0.23%)</title><rect x="1100.5" y="261" width="2.8" height="15.0" fill="rgb(227,102,24)" rx="2" ry="2" />
+<text  x="1103.54" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go.(*writer).flush (1 samples, 0.06%)</title><rect x="761.8" y="341" width="0.7" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="764.84" y="351.5" ></text>
+</g>
+<g >
+<title>sync.(*Once).doSlow (1 samples, 0.06%)</title><rect x="692.9" y="149" width="0.7" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="695.87" y="159.5" ></text>
+</g>
+<g >
+<title>internal/stringslite.IndexByte (12 samples, 0.69%)</title><rect x="781.0" y="309" width="8.2" height="15.0" fill="rgb(231,122,29)" rx="2" ry="2" />
+<text  x="783.96" y="319.5" ></text>
+</g>
+<g >
+<title>golang.org/x/net/idna.adapt (1 samples, 0.06%)</title><rect x="778.9" y="309" width="0.7" height="15.0" fill="rgb(235,141,33)" rx="2" ry="2" />
+<text  x="781.91" y="319.5" ></text>
+</g>
+<g >
+<title>internal/poll.(*fdMutex).rwunlock (1 samples, 0.06%)</title><rect x="91.3" y="165" width="0.6" height="15.0" fill="rgb(221,74,17)" rx="2" ry="2" />
+<text  x="94.26" y="175.5" ></text>
+</g>
+<g >
+<title>runtime.gcDrainMarkWorkerDedicated (13 samples, 0.75%)</title><rect x="1178.4" y="373" width="8.9" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="1181.39" y="383.5" ></text>
+</g>
+<g >
+<title>internal/runtime/atomic.(*Bool).Load (1 samples, 0.06%)</title><rect x="709.9" y="165" width="0.7" height="15.0" fill="rgb(214,45,10)" rx="2" ry="2" />
+<text  x="712.94" y="175.5" ></text>
+</g>
+<g >
+<title>internal/stringslite.Index (1 samples, 0.06%)</title><rect x="1127.9" y="277" width="0.6" height="15.0" fill="rgb(241,167,40)" rx="2" ry="2" />
+<text  x="1130.86" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic.Unmarshal (288 samples, 16.67%)</title><rect x="561.1" y="357" width="196.6" height="15.0" fill="rgb(251,215,51)" rx="2" ry="2" />
+<text  x="564.08" y="367.5" >github.com/bytedance/soni..</text>
+</g>
+<g >
+<title>skip_one (10 samples, 0.58%)</title><rect x="647.8" y="181" width="6.8" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="650.80" y="191.5" ></text>
+</g>
+<g >
+<title>golang.org/x/net/idna.(*Profile).process (33 samples, 1.91%)</title><rect x="766.6" y="325" width="22.6" height="15.0" fill="rgb(253,224,53)" rx="2" ry="2" />
+<text  x="769.62" y="335.5" >g..</text>
+</g>
+<g >
+<title>runtime.(*mheap).allocMSpanLocked (1 samples, 0.06%)</title><rect x="1166.8" y="69" width="0.7" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="1169.78" y="79.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/decoder/jitdec.(*_Assembler).escape_string (1 samples, 0.06%)</title><rect x="692.9" y="101" width="0.7" height="15.0" fill="rgb(233,130,31)" rx="2" ry="2" />
+<text  x="695.87" y="111.5" ></text>
+</g>
+<g >
+<title>runtime.gcDrain (13 samples, 0.75%)</title><rect x="1178.4" y="357" width="8.9" height="15.0" fill="rgb(233,130,31)" rx="2" ry="2" />
+<text  x="1181.39" y="367.5" ></text>
+</g>
+<g >
+<title>internal/poll.(*FD).readUnlock (1 samples, 0.06%)</title><rect x="91.3" y="181" width="0.6" height="15.0" fill="rgb(215,46,11)" rx="2" ry="2" />
+<text  x="94.26" y="191.5" ></text>
+</g>
+<g >
+<title>aeshashbody (2 samples, 0.12%)</title><rect x="1164.1" y="325" width="1.3" height="15.0" fill="rgb(250,210,50)" rx="2" ry="2" />
+<text  x="1167.05" y="335.5" ></text>
+</g>
+<g >
+<title>net/url.stringContainsCTLByte (33 samples, 1.91%)</title><rect x="1105.3" y="309" width="22.6" height="15.0" fill="rgb(233,129,31)" rx="2" ry="2" />
+<text  x="1108.32" y="319.5" >n..</text>
+</g>
+<g >
+<title>bufio.(*Reader).ReadByte (13 samples, 0.75%)</title><rect x="83.1" y="261" width="8.8" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="86.07" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go.(*byteArrayPage).Bounds (1 samples, 0.06%)</title><rect x="757.7" y="245" width="0.7" height="15.0" fill="rgb(234,133,31)" rx="2" ry="2" />
+<text  x="760.74" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.nextFreeFast (1 samples, 0.06%)</title><rect x="578.8" y="149" width="0.7" height="15.0" fill="rgb(227,102,24)" rx="2" ry="2" />
+<text  x="581.83" y="159.5" ></text>
+</g>
+<g >
+<title>runtime.slicebytetostring (1 samples, 0.06%)</title><rect x="972.8" y="261" width="0.7" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="975.85" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgcSmallScanNoHeader (1 samples, 0.06%)</title><rect x="793.3" y="293" width="0.6" height="15.0" fill="rgb(216,53,12)" rx="2" ry="2" />
+<text  x="796.25" y="303.5" ></text>
+</g>
+<g >
+<title>bufio.(*Reader).ReadByte (1 samples, 0.06%)</title><rect x="434.7" y="245" width="0.7" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="437.75" y="255.5" ></text>
+</g>
+<g >
+<title>bytes.Compare (1 samples, 0.06%)</title><rect x="757.7" y="229" width="0.7" height="15.0" fill="rgb(214,41,9)" rx="2" ry="2" />
+<text  x="760.74" y="239.5" ></text>
+</g>
+<g >
+<title>bytes.IndexByte (21 samples, 1.22%)</title><rect x="14.1" y="341" width="14.3" height="15.0" fill="rgb(241,167,40)" rx="2" ry="2" />
+<text  x="17.10" y="351.5" ></text>
+</g>
+<g >
+<title>internal/runtime/maps.newGroups (1 samples, 0.06%)</title><rect x="1166.1" y="277" width="0.7" height="15.0" fill="rgb(246,192,46)" rx="2" ry="2" />
+<text  x="1169.10" y="287.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*decompressor).Read (768 samples, 44.44%)</title><rect x="29.1" y="309" width="524.5" height="15.0" fill="rgb(211,30,7)" rx="2" ry="2" />
+<text  x="32.12" y="319.5" >compress/flate.(*decompressor).Read</text>
+</g>
+<g >
+<title>strings.LastIndex (1 samples, 0.06%)</title><rect x="1063.7" y="277" width="0.7" height="15.0" fill="rgb(225,92,22)" rx="2" ry="2" />
+<text  x="1066.67" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.memmove (7 samples, 0.41%)</title><rect x="533.8" y="277" width="4.7" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="536.76" y="287.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*decompressor).huffmanBlock (461 samples, 26.68%)</title><rect x="103.6" y="277" width="314.8" height="15.0" fill="rgb(207,13,3)" rx="2" ry="2" />
+<text  x="106.55" y="287.5" >compress/flate.(*decompressor).huffmanBlock</text>
+</g>
+<g >
+<title>runtime.(*mheap).alloc (6 samples, 0.35%)</title><rect x="1079.4" y="181" width="4.1" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="1082.38" y="191.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*dictDecoder).availWrite (1 samples, 0.06%)</title><rect x="527.6" y="293" width="0.7" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="530.62" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.releasem (2 samples, 0.12%)</title><rect x="1103.3" y="261" width="1.3" height="15.0" fill="rgb(214,42,10)" rx="2" ry="2" />
+<text  x="1106.28" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (1 samples, 0.06%)</title><rect x="972.8" y="245" width="0.7" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="975.85" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointers (1 samples, 0.06%)</title><rect x="670.3" y="133" width="0.7" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="673.34" y="143.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/decoder/jitdec.(*_Assembler).compile (1 samples, 0.06%)</title><rect x="692.9" y="117" width="0.7" height="15.0" fill="rgb(254,228,54)" rx="2" ry="2" />
+<text  x="695.87" y="127.5" ></text>
+</g>
+<g >
+<title>runtime.acquirem (2 samples, 0.12%)</title><rect x="1069.1" y="261" width="1.4" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="1072.13" y="271.5" ></text>
+</g>
+<g >
+<title>golang.org/x/net/idna.(*labelIter).label (9 samples, 0.52%)</title><rect x="772.8" y="309" width="6.1" height="15.0" fill="rgb(241,167,40)" rx="2" ry="2" />
+<text  x="775.77" y="319.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).allocSpan (1 samples, 0.06%)</title><rect x="1166.8" y="85" width="0.7" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="1169.78" y="95.5" ></text>
+</g>
+<g >
+<title>strings.Cut (6 samples, 0.35%)</title><rect x="1142.9" y="325" width="4.1" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="1145.88" y="335.5" ></text>
+</g>
+<g >
+<title>vstring (18 samples, 1.04%)</title><rect x="654.6" y="181" width="12.3" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="657.63" y="191.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/jit.newProg (1 samples, 0.06%)</title><rect x="692.9" y="69" width="0.7" height="15.0" fill="rgb(218,62,14)" rx="2" ry="2" />
+<text  x="695.87" y="79.5" ></text>
+</g>
+<g >
+<title>github.com/klauspost/compress/s2.encodeBlockBetterSnappy (4 samples, 0.23%)</title><rect x="758.4" y="213" width="2.8" height="15.0" fill="rgb(214,41,9)" rx="2" ry="2" />
+<text  x="761.43" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.(*mspan).writeHeapBitsSmall (1 samples, 0.06%)</title><rect x="470.9" y="197" width="0.7" height="15.0" fill="rgb(217,59,14)" rx="2" ry="2" />
+<text  x="473.94" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgcSmallScanHeader (1 samples, 0.06%)</title><rect x="1166.8" y="213" width="0.7" height="15.0" fill="rgb(237,150,35)" rx="2" ry="2" />
+<text  x="1169.78" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.decoderune (1 samples, 0.06%)</title><rect x="779.6" y="293" width="0.7" height="15.0" fill="rgb(220,71,17)" rx="2" ry="2" />
+<text  x="782.59" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointers (1 samples, 0.06%)</title><rect x="675.1" y="149" width="0.7" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="678.12" y="159.5" ></text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go.(*writer).writeRows (6 samples, 0.35%)</title><rect x="757.7" y="325" width="4.1" height="15.0" fill="rgb(246,189,45)" rx="2" ry="2" />
+<text  x="760.74" y="335.5" ></text>
+</g>
+<g >
+<title>memeqbody (1 samples, 0.06%)</title><rect x="646.4" y="181" width="0.7" height="15.0" fill="rgb(242,173,41)" rx="2" ry="2" />
+<text  x="649.44" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.newobject (1 samples, 0.06%)</title><rect x="793.3" y="325" width="0.6" height="15.0" fill="rgb(221,75,18)" rx="2" ry="2" />
+<text  x="796.25" y="335.5" ></text>
+</g>
+<g >
+<title>runtime.(*sysMemStat).add (1 samples, 0.06%)</title><rect x="1175.0" y="309" width="0.7" height="15.0" fill="rgb(236,143,34)" rx="2" ry="2" />
+<text  x="1177.98" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/decoder/jitdec.Decode (216 samples, 12.50%)</title><rect x="561.1" y="293" width="147.5" height="15.0" fill="rgb(207,12,3)" rx="2" ry="2" />
+<text  x="564.08" y="303.5" >github.com/bytedan..</text>
+</g>
+<g >
+<title>strings.(*Builder).Grow (1 samples, 0.06%)</title><rect x="790.5" y="293" width="0.7" height="15.0" fill="rgb(225,92,22)" rx="2" ry="2" />
+<text  x="793.52" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointers (6 samples, 0.35%)</title><rect x="1096.4" y="245" width="4.1" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="1099.45" y="255.5" ></text>
+</g>
+<g >
+<title>net/url.Parse (421 samples, 24.36%)</title><rect x="855.4" y="325" width="287.5" height="15.0" fill="rgb(235,139,33)" rx="2" ry="2" />
+<text  x="858.39" y="335.5" >net/url.Parse</text>
+</g>
+<g >
+<title>runtime.markroot (1 samples, 0.06%)</title><rect x="1179.1" y="341" width="0.7" height="15.0" fill="rgb(251,212,50)" rx="2" ry="2" />
+<text  x="1182.07" y="351.5" ></text>
+</g>
+<g >
+<title>internal/runtime/maps.(*table).grow (1 samples, 0.06%)</title><rect x="1166.1" y="309" width="0.7" height="15.0" fill="rgb(224,90,21)" rx="2" ry="2" />
+<text  x="1169.10" y="319.5" ></text>
+</g>
+<g >
+<title>math/bits.Reverse16 (4 samples, 0.23%)</title><rect x="473.0" y="261" width="2.7" height="15.0" fill="rgb(213,38,9)" rx="2" ry="2" />
+<text  x="475.99" y="271.5" ></text>
+</g>
+<g >
+<title>net/url.unescape (57 samples, 3.30%)</title><rect x="1023.4" y="261" width="38.9" height="15.0" fill="rgb(206,7,1)" rx="2" ry="2" />
+<text  x="1026.38" y="271.5" >net..</text>
+</g>
+<g >
+<title>hash/crc32.update (8 samples, 0.46%)</title><rect x="555.6" y="309" width="5.5" height="15.0" fill="rgb(227,105,25)" rx="2" ry="2" />
+<text  x="558.61" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/klauspost/compress/s2.EncodeSnappyBetter (4 samples, 0.23%)</title><rect x="758.4" y="229" width="2.8" height="15.0" fill="rgb(242,172,41)" rx="2" ry="2" />
+<text  x="761.43" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (1 samples, 0.06%)</title><rect x="677.2" y="197" width="0.6" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="680.16" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).initSpan (2 samples, 0.12%)</title><rect x="1081.4" y="117" width="1.4" height="15.0" fill="rgb(245,187,44)" rx="2" ry="2" />
+<text  x="1084.42" y="127.5" ></text>
+</g>
+<g >
+<title>internal/runtime/maps.bitset.first (1 samples, 0.06%)</title><rect x="1165.4" y="309" width="0.7" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="1168.42" y="319.5" ></text>
+</g>
+<g >
+<title>runtime.(*mspan).writeHeapBitsSmall (4 samples, 0.23%)</title><rect x="1073.9" y="245" width="2.7" height="15.0" fill="rgb(217,59,14)" rx="2" ry="2" />
+<text  x="1076.91" y="255.5" ></text>
+</g>
+<g >
+<title>syscall.Read (1 samples, 0.06%)</title><rect x="434.1" y="181" width="0.6" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="437.06" y="191.5" ></text>
+</g>
+<g >
+<title>indexbytebody (4 samples, 0.23%)</title><rect x="1144.2" y="277" width="2.8" height="15.0" fill="rgb(206,8,1)" rx="2" ry="2" />
+<text  x="1147.25" y="287.5" ></text>
+</g>
+<g >
+<title>aeshashbody (5 samples, 0.29%)</title><rect x="565.9" y="197" width="3.4" height="15.0" fill="rgb(250,210,50)" rx="2" ry="2" />
+<text  x="568.86" y="207.5" ></text>
+</g>
+<g >
+<title>strings.(*Builder).grow (1 samples, 0.06%)</title><rect x="790.5" y="277" width="0.7" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="793.52" y="287.5" ></text>
+</g>
+<g >
+<title>internal/bytealg.LastIndexByteString (6 samples, 0.35%)</title><rect x="851.3" y="309" width="4.1" height="15.0" fill="rgb(243,175,41)" rx="2" ry="2" />
+<text  x="854.30" y="319.5" ></text>
+</g>
+<g >
+<title>strings.Index (5 samples, 0.29%)</title><rect x="1147.0" y="325" width="3.4" height="15.0" fill="rgb(234,137,32)" rx="2" ry="2" />
+<text  x="1149.98" y="335.5" ></text>
+</g>
+<g >
+<title>skip_one (22 samples, 1.27%)</title><rect x="677.8" y="213" width="15.1" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="680.85" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.(*lfstack).pop (1 samples, 0.06%)</title><rect x="1178.4" y="325" width="0.7" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1181.39" y="335.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/jit.(*Backend).New (1 samples, 0.06%)</title><rect x="692.9" y="85" width="0.7" height="15.0" fill="rgb(226,99,23)" rx="2" ry="2" />
+<text  x="695.87" y="95.5" ></text>
+</g>
+<g >
+<title>main.(*ReaderStatsTracker).Read (780 samples, 45.14%)</title><rect x="28.4" y="341" width="532.7" height="15.0" fill="rgb(227,101,24)" rx="2" ry="2" />
+<text  x="31.44" y="351.5" >main.(*ReaderStatsTracker).Read</text>
+</g>
+<g >
+<title>fmt.Errorf (3 samples, 0.17%)</title><rect x="803.5" y="309" width="2.0" height="15.0" fill="rgb(223,82,19)" rx="2" ry="2" />
+<text  x="806.50" y="319.5" ></text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointers (1 samples, 0.06%)</title><rect x="471.6" y="197" width="0.7" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="474.62" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.(*sysMemStat).add (1 samples, 0.06%)</title><rect x="711.3" y="149" width="0.7" height="15.0" fill="rgb(236,143,34)" rx="2" ry="2" />
+<text  x="714.31" y="159.5" ></text>
+</g>
+<g >
+<title>runtime.makeslice (1 samples, 0.06%)</title><rect x="972.2" y="261" width="0.6" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="975.16" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.newarray (1 samples, 0.06%)</title><rect x="1166.1" y="245" width="0.7" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="1169.10" y="255.5" ></text>
+</g>
+<g >
+<title>strings.Join (1 samples, 0.06%)</title><rect x="790.5" y="309" width="0.7" height="15.0" fill="rgb(206,7,1)" rx="2" ry="2" />
+<text  x="793.52" y="319.5" ></text>
+</g>
+<g >
+<title>golang.org/x/net/idna.encode (1 samples, 0.06%)</title><rect x="779.6" y="309" width="0.7" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="782.59" y="319.5" ></text>
+</g>
+<g >
+<title>strings.TrimSpace (1 samples, 0.06%)</title><rect x="1150.4" y="325" width="0.7" height="15.0" fill="rgb(250,210,50)" rx="2" ry="2" />
+<text  x="1153.39" y="335.5" ></text>
+</g>
+<g >
+<title>internal/runtime/maps.ctrlGroup.matchH2 (1 samples, 0.06%)</title><rect x="793.9" y="341" width="0.7" height="15.0" fill="rgb(221,77,18)" rx="2" ry="2" />
+<text  x="796.94" y="351.5" ></text>
+</g>
+<g >
+<title>golang.org/x/net/idna.(*labelIter).result (1 samples, 0.06%)</title><rect x="790.5" y="325" width="0.7" height="15.0" fill="rgb(214,42,10)" rx="2" ry="2" />
+<text  x="793.52" y="335.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*decompressor).huffSym (64 samples, 3.70%)</title><rect x="48.2" y="277" width="43.7" height="15.0" fill="rgb(249,202,48)" rx="2" ry="2" />
+<text  x="51.24" y="287.5" >comp..</text>
+</g>
+<g >
+<title>runtime.makeslice (1 samples, 0.06%)</title><rect x="677.2" y="213" width="0.6" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="680.16" y="223.5" ></text>
+</g>
+<g >
+<title>strconv.AppendQuote (1 samples, 0.06%)</title><rect x="803.5" y="245" width="0.7" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="806.50" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.(*mspan).writeHeapBitsSmall (1 samples, 0.06%)</title><rect x="802.8" y="245" width="0.7" height="15.0" fill="rgb(217,59,14)" rx="2" ry="2" />
+<text  x="805.81" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcentral).cacheSpan (3 samples, 0.17%)</title><rect x="709.9" y="245" width="2.1" height="15.0" fill="rgb(244,179,42)" rx="2" ry="2" />
+<text  x="712.94" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcache).nextFree (1 samples, 0.06%)</title><rect x="972.8" y="213" width="0.7" height="15.0" fill="rgb(222,80,19)" rx="2" ry="2" />
+<text  x="975.85" y="223.5" ></text>
+</g>
+<g >
+<title>net/url.parseAuthority (80 samples, 4.63%)</title><rect x="1009.7" y="293" width="54.7" height="15.0" fill="rgb(218,64,15)" rx="2" ry="2" />
+<text  x="1012.72" y="303.5" >net/u..</text>
+</g>
+<g >
+<title>vstring (4 samples, 0.23%)</title><rect x="705.8" y="245" width="2.8" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="708.84" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/decoder/jitdec.decodeTypedPointer (125 samples, 7.23%)</title><rect x="584.3" y="213" width="85.4" height="15.0" fill="rgb(243,179,42)" rx="2" ry="2" />
+<text  x="587.29" y="223.5" >github.com..</text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/caching.(*FieldMap).GetCaseInsensitive (25 samples, 1.45%)</title><rect x="629.4" y="181" width="17.0" height="15.0" fill="rgb(234,133,31)" rx="2" ry="2" />
+<text  x="632.36" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (1 samples, 0.06%)</title><rect x="790.5" y="245" width="0.7" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="793.52" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcache).allocLarge (1 samples, 0.06%)</title><rect x="709.3" y="277" width="0.6" height="15.0" fill="rgb(253,221,53)" rx="2" ry="2" />
+<text  x="712.26" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/caching.(*FieldMap).GetCaseInsensitive (22 samples, 1.27%)</title><rect x="565.2" y="245" width="15.0" height="15.0" fill="rgb(234,133,31)" rx="2" ry="2" />
+<text  x="568.17" y="255.5" ></text>
+</g>
+<g >
+<title>internal/runtime/maps.(*Map).growToTable (1 samples, 0.06%)</title><rect x="1165.4" y="325" width="0.7" height="15.0" fill="rgb(224,87,21)" rx="2" ry="2" />
+<text  x="1168.42" y="335.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcache).refill (27 samples, 1.56%)</title><rect x="1078.0" y="229" width="18.4" height="15.0" fill="rgb(232,124,29)" rx="2" ry="2" />
+<text  x="1081.01" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcentral).grow (25 samples, 1.45%)</title><rect x="1079.4" y="197" width="17.0" height="15.0" fill="rgb(233,130,31)" rx="2" ry="2" />
+<text  x="1082.38" y="207.5" ></text>
+</g>
+<g >
+<title>os.(*File).read (1 samples, 0.06%)</title><rect x="417.7" y="197" width="0.7" height="15.0" fill="rgb(222,81,19)" rx="2" ry="2" />
+<text  x="420.67" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.futexsleep (1 samples, 0.06%)</title><rect x="1188.0" y="309" width="0.6" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="1190.95" y="319.5" ></text>
+</g>
+<g >
+<title>syscall.read (1 samples, 0.06%)</title><rect x="434.1" y="165" width="0.6" height="15.0" fill="rgb(226,96,23)" rx="2" ry="2" />
+<text  x="437.06" y="175.5" ></text>
+</g>
+<g >
+<title>internal/runtime/maps.NewEmptyMap (1 samples, 0.06%)</title><rect x="793.3" y="341" width="0.6" height="15.0" fill="rgb(236,143,34)" rx="2" ry="2" />
+<text  x="796.25" y="351.5" ></text>
+</g>
+<g >
+<title>net/url.shouldEscape (18 samples, 1.04%)</title><rect x="1050.0" y="245" width="12.3" height="15.0" fill="rgb(248,200,47)" rx="2" ry="2" />
+<text  x="1053.01" y="255.5" ></text>
+</g>
+<g >
+<title>memeqbody (3 samples, 0.17%)</title><rect x="1153.1" y="341" width="2.1" height="15.0" fill="rgb(242,173,41)" rx="2" ry="2" />
+<text  x="1156.12" y="351.5" ></text>
+</g>
+<g >
+<title>strings.(*Builder).String (1 samples, 0.06%)</title><rect x="569.3" y="229" width="0.7" height="15.0" fill="rgb(229,113,27)" rx="2" ry="2" />
+<text  x="572.27" y="239.5" ></text>
+</g>
+<g >
+<title>memeqbody (2 samples, 0.12%)</title><rect x="693.6" y="245" width="1.3" height="15.0" fill="rgb(242,173,41)" rx="2" ry="2" />
+<text  x="696.55" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgcSmallNoscan (1 samples, 0.06%)</title><rect x="1002.9" y="197" width="0.7" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="1005.89" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgcTiny (1 samples, 0.06%)</title><rect x="472.3" y="213" width="0.7" height="15.0" fill="rgb(228,108,26)" rx="2" ry="2" />
+<text  x="475.30" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.memmove (1 samples, 0.06%)</title><rect x="1170.2" y="341" width="0.7" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="1173.20" y="351.5" ></text>
+</g>
+<g >
+<title>strings.(*Builder).Grow (1 samples, 0.06%)</title><rect x="1002.9" y="261" width="0.7" height="15.0" fill="rgb(225,92,22)" rx="2" ry="2" />
+<text  x="1005.89" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.markroot.func1 (1 samples, 0.06%)</title><rect x="1179.1" y="325" width="0.7" height="15.0" fill="rgb(222,80,19)" rx="2" ry="2" />
+<text  x="1182.07" y="335.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).alloc (1 samples, 0.06%)</title><rect x="1166.8" y="133" width="0.7" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="1169.78" y="143.5" ></text>
+</g>
+<g >
+<title>runtime.futex (1 samples, 0.06%)</title><rect x="1188.0" y="293" width="0.6" height="15.0" fill="rgb(237,150,35)" rx="2" ry="2" />
+<text  x="1190.95" y="303.5" ></text>
+</g>
+<g >
+<title>strings.(*Builder).WriteString (3 samples, 0.17%)</title><rect x="570.0" y="229" width="2.0" height="15.0" fill="rgb(251,212,50)" rx="2" ry="2" />
+<text  x="572.95" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.procyield (1 samples, 0.06%)</title><rect x="1179.1" y="293" width="0.7" height="15.0" fill="rgb(206,8,1)" rx="2" ry="2" />
+<text  x="1182.07" y="303.5" ></text>
+</g>
+<g >
+<title>runtime/pprof.profileWriter (1 samples, 0.06%)</title><rect x="1189.3" y="405" width="0.7" height="15.0" fill="rgb(237,147,35)" rx="2" ry="2" />
+<text  x="1192.32" y="415.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).allocSpan (1 samples, 0.06%)</title><rect x="709.3" y="213" width="0.6" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="712.26" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcache).refill (5 samples, 0.29%)</title><rect x="709.9" y="261" width="3.5" height="15.0" fill="rgb(232,124,29)" rx="2" ry="2" />
+<text  x="712.94" y="271.5" ></text>
+</g>
+<g >
+<title>bufio.(*Reader).ReadByte (64 samples, 3.70%)</title><rect x="355.5" y="245" width="43.7" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="358.53" y="255.5" >bufi..</text>
+</g>
+<g >
+<title>runtime.(*mheap).alloc (1 samples, 0.06%)</title><rect x="709.3" y="261" width="0.6" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="712.26" y="271.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*dictDecoder).writeByte (18 samples, 1.04%)</title><rect x="515.3" y="277" width="12.3" height="15.0" fill="rgb(235,142,33)" rx="2" ry="2" />
+<text  x="518.32" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.systemstack (6 samples, 0.35%)</title><rect x="1079.4" y="165" width="4.1" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="1082.38" y="175.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/decoder/jitdec.decodeTypedPointer (166 samples, 9.61%)</title><rect x="580.2" y="245" width="113.4" height="15.0" fill="rgb(243,179,42)" rx="2" ry="2" />
+<text  x="583.20" y="255.5" >github.com/byt..</text>
+</g>
+<g >
+<title>internal/runtime/maps.newTable (1 samples, 0.06%)</title><rect x="1166.1" y="293" width="0.7" height="15.0" fill="rgb(228,109,26)" rx="2" ry="2" />
+<text  x="1169.10" y="303.5" ></text>
+</g>
+<g >
+<title>hash/crc32.archUpdateIEEE (8 samples, 0.46%)</title><rect x="555.6" y="293" width="5.5" height="15.0" fill="rgb(251,214,51)" rx="2" ry="2" />
+<text  x="558.61" y="303.5" ></text>
+</g>
+<g >
+<title>golang.org/x/text/secure/bidirule.DirectionString (1 samples, 0.06%)</title><rect x="780.3" y="309" width="0.7" height="15.0" fill="rgb(216,54,13)" rx="2" ry="2" />
+<text  x="783.28" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/jit.(*BaseAssembler).Load (1 samples, 0.06%)</title><rect x="692.9" y="181" width="0.7" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
+<text  x="695.87" y="191.5" ></text>
+</g>
+<g >
+<title>internal/stringslite.IndexByte (4 samples, 0.23%)</title><rect x="1144.2" y="293" width="2.8" height="15.0" fill="rgb(231,122,29)" rx="2" ry="2" />
+<text  x="1147.25" y="303.5" ></text>
+</g>
+<g >
+<title>syscall.RawSyscall6 (1 samples, 0.06%)</title><rect x="417.7" y="133" width="0.7" height="15.0" fill="rgb(241,167,40)" rx="2" ry="2" />
+<text  x="420.67" y="143.5" ></text>
+</g>
+<g >
+<title>runtime.notesleep (1 samples, 0.06%)</title><rect x="1188.0" y="325" width="0.6" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="1190.95" y="335.5" ></text>
+</g>
+<g >
+<title>fmt.(*pp).fmtString (1 samples, 0.06%)</title><rect x="803.5" y="261" width="0.7" height="15.0" fill="rgb(226,99,23)" rx="2" ry="2" />
+<text  x="806.50" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointersChunked (1 samples, 0.06%)</title><rect x="670.3" y="149" width="0.7" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="673.34" y="159.5" ></text>
+</g>
+<g >
+<title>bufio.(*Reader).ReadByte (4 samples, 0.23%)</title><rect x="95.4" y="261" width="2.7" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="98.36" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.divRoundUp (1 samples, 0.06%)</title><rect x="1166.1" y="213" width="0.7" height="15.0" fill="rgb(211,27,6)" rx="2" ry="2" />
+<text  x="1169.10" y="223.5" ></text>
+</g>
+<g >
+<title>net/url.escape (121 samples, 7.00%)</title><rect x="890.9" y="277" width="82.6" height="15.0" fill="rgb(223,83,19)" rx="2" ry="2" />
+<text  x="893.90" y="287.5" >net/url.e..</text>
+</g>
+<g >
+<title>os.(*File).read (7 samples, 0.41%)</title><rect x="394.5" y="197" width="4.7" height="15.0" fill="rgb(222,81,19)" rx="2" ry="2" />
+<text  x="397.46" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.spanOf (1 samples, 0.06%)</title><rect x="1185.9" y="325" width="0.7" height="15.0" fill="rgb(206,7,1)" rx="2" ry="2" />
+<text  x="1188.90" y="335.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgcLarge (1 samples, 0.06%)</title><rect x="670.3" y="165" width="0.7" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
+<text  x="673.34" y="175.5" ></text>
+</g>
+<g >
+<title>internal/runtime/maps.newarray (1 samples, 0.06%)</title><rect x="1166.8" y="261" width="0.7" height="15.0" fill="rgb(223,85,20)" rx="2" ry="2" />
+<text  x="1169.78" y="271.5" ></text>
+</g>
+<g >
+<title>internal/stringslite.Index (5 samples, 0.29%)</title><rect x="1147.0" y="309" width="3.4" height="15.0" fill="rgb(241,167,40)" rx="2" ry="2" />
+<text  x="1149.98" y="319.5" ></text>
+</g>
+<g >
+<title>runtime.recordspan (1 samples, 0.06%)</title><rect x="1166.8" y="37" width="0.7" height="15.0" fill="rgb(247,197,47)" rx="2" ry="2" />
+<text  x="1169.78" y="47.5" ></text>
+</g>
+<g >
+<title>runtime.growslice (11 samples, 0.64%)</title><rect x="669.7" y="197" width="7.5" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="672.65" y="207.5" ></text>
+</g>
+<g >
+<title>main.processWATRecord (597 samples, 34.55%)</title><rect x="762.5" y="357" width="407.7" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="765.52" y="367.5" >main.processWATRecord</text>
+</g>
+<g >
+<title>runtime.mallocgcSmallNoscan (1 samples, 0.06%)</title><rect x="972.8" y="229" width="0.7" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="975.85" y="239.5" ></text>
+</g>
+<g >
+<title>bufio.(*Reader).fill (1 samples, 0.06%)</title><rect x="91.3" y="245" width="0.6" height="15.0" fill="rgb(205,1,0)" rx="2" ry="2" />
+<text  x="94.26" y="255.5" ></text>
+</g>
+<g >
+<title>internal/runtime/atomic.(*Uint64).Add (1 samples, 0.06%)</title><rect x="712.7" y="213" width="0.7" height="15.0" fill="rgb(219,67,16)" rx="2" ry="2" />
+<text  x="715.67" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.memmove (2 samples, 0.12%)</title><rect x="675.8" y="181" width="1.4" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="678.80" y="191.5" ></text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go.(*writer).writeRowGroup (1 samples, 0.06%)</title><rect x="761.8" y="325" width="0.7" height="15.0" fill="rgb(247,196,46)" rx="2" ry="2" />
+<text  x="764.84" y="335.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (1 samples, 0.06%)</title><rect x="1002.9" y="213" width="0.7" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="1005.89" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go.(*ColumnWriter).writeDataPage (6 samples, 0.35%)</title><rect x="757.7" y="277" width="4.1" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="760.74" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (8 samples, 0.46%)</title><rect x="670.3" y="181" width="5.5" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="673.34" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.(*pageAlloc).allocToCache (1 samples, 0.06%)</title><rect x="1082.8" y="117" width="0.7" height="15.0" fill="rgb(236,144,34)" rx="2" ry="2" />
+<text  x="1085.79" y="127.5" ></text>
+</g>
+<g >
+<title>sync.(*Once).Do (1 samples, 0.06%)</title><rect x="692.9" y="165" width="0.7" height="15.0" fill="rgb(230,118,28)" rx="2" ry="2" />
+<text  x="695.87" y="175.5" ></text>
+</g>
+<g >
+<title>unicode/utf8.ValidString (3 samples, 0.17%)</title><rect x="1151.1" y="325" width="2.0" height="15.0" fill="rgb(206,9,2)" rx="2" ry="2" />
+<text  x="1154.08" y="335.5" ></text>
+</g>
+<g >
+<title>runtime.systemstack (1 samples, 0.06%)</title><rect x="1166.8" y="117" width="0.7" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="1169.78" y="127.5" ></text>
+</g>
+<g >
+<title>runtime.gcBgMarkWorker (13 samples, 0.75%)</title><rect x="1178.4" y="405" width="8.9" height="15.0" fill="rgb(235,140,33)" rx="2" ry="2" />
+<text  x="1181.39" y="415.5" ></text>
+</g>
+<g >
+<title>internal/runtime/syscall.Syscall6 (1 samples, 0.06%)</title><rect x="434.1" y="117" width="0.6" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="437.06" y="127.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgcSmallNoscan (5 samples, 0.29%)</title><rect x="709.9" y="293" width="3.5" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="712.94" y="303.5" ></text>
+</g>
+<g >
+<title>indexbody (2 samples, 0.12%)</title><rect x="1147.7" y="293" width="1.3" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="1150.66" y="303.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*decompressor).huffSym (312 samples, 18.06%)</title><rect x="186.2" y="261" width="213.0" height="15.0" fill="rgb(249,202,48)" rx="2" ry="2" />
+<text  x="189.18" y="271.5" >compress/flate.(*decompresso..</text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go/encoding/delta.(*LengthByteArrayEncoding).EncodeByteArray (1 samples, 0.06%)</title><rect x="761.2" y="213" width="0.6" height="15.0" fill="rgb(225,95,22)" rx="2" ry="2" />
+<text  x="764.16" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.systemstack (3 samples, 0.17%)</title><rect x="709.9" y="197" width="2.1" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="712.94" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.bool2int (1 samples, 0.06%)</title><rect x="578.1" y="149" width="0.7" height="15.0" fill="rgb(253,222,53)" rx="2" ry="2" />
+<text  x="581.15" y="159.5" ></text>
+</g>
+<g >
+<title>runtime.(*spanSet).push (1 samples, 0.06%)</title><rect x="712.7" y="229" width="0.7" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="715.67" y="239.5" ></text>
+</g>
+<g >
+<title>fmt.(*pp).printArg (1 samples, 0.06%)</title><rect x="803.5" y="277" width="0.7" height="15.0" fill="rgb(245,185,44)" rx="2" ry="2" />
+<text  x="806.50" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.heapSetTypeNoHeader (1 samples, 0.06%)</title><rect x="802.8" y="261" width="0.7" height="15.0" fill="rgb(216,54,12)" rx="2" ry="2" />
+<text  x="805.81" y="271.5" ></text>
+</g>
+<g >
+<title>golang.org/x/net/publicsuffix.uint32String.get (4 samples, 0.23%)</title><rect x="847.9" y="309" width="2.7" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="850.88" y="319.5" ></text>
+</g>
+<g >
+<title>runtime.findRunnable (2 samples, 0.12%)</title><rect x="1188.0" y="357" width="1.3" height="15.0" fill="rgb(219,64,15)" rx="2" ry="2" />
+<text  x="1190.95" y="367.5" ></text>
+</g>
+<g >
+<title>internal/bytealg.LastIndexByteString (7 samples, 0.41%)</title><rect x="1018.6" y="261" width="4.8" height="15.0" fill="rgb(243,175,41)" rx="2" ry="2" />
+<text  x="1021.60" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.cmpstring (2 samples, 0.12%)</title><rect x="837.0" y="277" width="1.3" height="15.0" fill="rgb(229,111,26)" rx="2" ry="2" />
+<text  x="839.96" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.mapaccess2_faststr (15 samples, 0.87%)</title><rect x="632.1" y="165" width="10.2" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="635.09" y="175.5" ></text>
+</g>
+<g >
+<title>internal/runtime/maps.(*Map).getWithoutKeySmallFastStr (6 samples, 0.35%)</title><rect x="565.2" y="213" width="4.1" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="568.17" y="223.5" ></text>
+</g>
+<g >
+<title>main.(*ReaderStatsTracker).Read (7 samples, 0.41%)</title><rect x="394.5" y="213" width="4.7" height="15.0" fill="rgb(227,101,24)" rx="2" ry="2" />
+<text  x="397.46" y="223.5" ></text>
+</g>
+<g >
+<title>internal/stringslite.HasSuffix (2 samples, 0.12%)</title><rect x="862.9" y="309" width="1.4" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="865.91" y="319.5" ></text>
+</g>
+<g >
+<title>runtime.(*fixalloc).alloc (1 samples, 0.06%)</title><rect x="710.6" y="133" width="0.7" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="713.62" y="143.5" ></text>
+</g>
+<g >
+<title>indexbytebody (10 samples, 0.58%)</title><rect x="1128.5" y="261" width="6.9" height="15.0" fill="rgb(206,8,1)" rx="2" ry="2" />
+<text  x="1131.54" y="271.5" ></text>
+</g>
+<g >
+<title>syscall.Syscall (1 samples, 0.06%)</title><rect x="434.1" y="149" width="0.6" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="437.06" y="159.5" ></text>
+</g>
+<g >
+<title>golang.org/x/net/idna.(*labelIter).next (2 samples, 0.12%)</title><rect x="789.2" y="325" width="1.3" height="15.0" fill="rgb(211,29,6)" rx="2" ry="2" />
+<text  x="792.16" y="335.5" ></text>
+</g>
+<g >
+<title>syscall.read (7 samples, 0.41%)</title><rect x="394.5" y="165" width="4.7" height="15.0" fill="rgb(226,96,23)" rx="2" ry="2" />
+<text  x="397.46" y="175.5" ></text>
+</g>
+<g >
+<title>aeshashbody (4 samples, 0.23%)</title><rect x="639.6" y="133" width="2.7" height="15.0" fill="rgb(250,210,50)" rx="2" ry="2" />
+<text  x="642.61" y="143.5" ></text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointers (5 samples, 0.29%)</title><rect x="671.7" y="149" width="3.4" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="674.70" y="159.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/caching.(*ProgramCache).Compute (1 samples, 0.06%)</title><rect x="692.9" y="213" width="0.7" height="15.0" fill="rgb(213,40,9)" rx="2" ry="2" />
+<text  x="695.87" y="223.5" ></text>
+</g>
+<g >
+<title>indexbytebody (8 samples, 0.46%)</title><rect x="1137.4" y="277" width="5.5" height="15.0" fill="rgb(206,8,1)" rx="2" ry="2" />
+<text  x="1140.42" y="287.5" ></text>
+</g>
+<g >
+<title>golang.org/x/net/idna.(*Profile).validateLabel (1 samples, 0.06%)</title><rect x="772.1" y="309" width="0.7" height="15.0" fill="rgb(218,62,14)" rx="2" ry="2" />
+<text  x="775.08" y="319.5" ></text>
+</g>
+<g >
+<title>strings.(*Builder).Grow (3 samples, 0.17%)</title><rect x="578.1" y="213" width="2.1" height="15.0" fill="rgb(225,92,22)" rx="2" ry="2" />
+<text  x="581.15" y="223.5" ></text>
+</g>
+<g >
+<title>internal/runtime/maps.newGroups (1 samples, 0.06%)</title><rect x="1166.8" y="277" width="0.7" height="15.0" fill="rgb(246,192,46)" rx="2" ry="2" />
+<text  x="1169.78" y="287.5" ></text>
+</g>
+<g >
+<title>net/url.(*URL).setFragment (3 samples, 0.17%)</title><rect x="864.3" y="309" width="2.0" height="15.0" fill="rgb(207,10,2)" rx="2" ry="2" />
+<text  x="867.27" y="319.5" ></text>
+</g>
+<g >
+<title>io.WriteString (1 samples, 0.06%)</title><rect x="761.8" y="293" width="0.7" height="15.0" fill="rgb(216,52,12)" rx="2" ry="2" />
+<text  x="764.84" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go.(*ColumnWriter).Flush (6 samples, 0.35%)</title><rect x="757.7" y="293" width="4.1" height="15.0" fill="rgb(208,14,3)" rx="2" ry="2" />
+<text  x="760.74" y="303.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*decompressor).moreBits (1 samples, 0.06%)</title><rect x="434.7" y="261" width="0.7" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="437.75" y="271.5" ></text>
+</g>
+<g >
+<title>indexbytebody (7 samples, 0.41%)</title><rect x="782.3" y="293" width="4.8" height="15.0" fill="rgb(206,8,1)" rx="2" ry="2" />
+<text  x="785.33" y="303.5" ></text>
+</g>
+<g >
+<title>hash/crc32.Update (8 samples, 0.46%)</title><rect x="555.6" y="325" width="5.5" height="15.0" fill="rgb(234,136,32)" rx="2" ry="2" />
+<text  x="558.61" y="335.5" ></text>
+</g>
+<g >
+<title>runtime.getitab (1 samples, 0.06%)</title><rect x="761.8" y="261" width="0.7" height="15.0" fill="rgb(224,91,21)" rx="2" ry="2" />
+<text  x="764.84" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.systemstack (1 samples, 0.06%)</title><rect x="709.3" y="245" width="0.6" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="712.26" y="255.5" ></text>
+</g>
+<g >
+<title>bufio.(*Reader).fill (7 samples, 0.41%)</title><rect x="394.5" y="229" width="4.7" height="15.0" fill="rgb(205,1,0)" rx="2" ry="2" />
+<text  x="397.46" y="239.5" ></text>
+</g>
+<g >
+<title>net/url.parse (350 samples, 20.25%)</title><rect x="866.3" y="309" width="239.0" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="869.32" y="319.5" >net/url.parse</text>
+</g>
+<g >
+<title>compress/gzip.(*Reader).readHeader (3 samples, 0.17%)</title><rect x="553.6" y="309" width="2.0" height="15.0" fill="rgb(222,81,19)" rx="2" ry="2" />
+<text  x="556.56" y="319.5" ></text>
+</g>
+<g >
+<title>runtime.newobject (1 samples, 0.06%)</title><rect x="1169.5" y="341" width="0.7" height="15.0" fill="rgb(221,75,18)" rx="2" ry="2" />
+<text  x="1172.51" y="351.5" ></text>
+</g>
+<g >
+<title>runtime.suspendG (1 samples, 0.06%)</title><rect x="1179.1" y="309" width="0.7" height="15.0" fill="rgb(246,191,45)" rx="2" ry="2" />
+<text  x="1182.07" y="319.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcentral).cacheSpan (25 samples, 1.45%)</title><rect x="1079.4" y="213" width="17.0" height="15.0" fill="rgb(244,179,42)" rx="2" ry="2" />
+<text  x="1082.38" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcentral).grow (3 samples, 0.17%)</title><rect x="709.9" y="229" width="2.1" height="15.0" fill="rgb(233,130,31)" rx="2" ry="2" />
+<text  x="712.94" y="239.5" ></text>
+</g>
+<g >
+<title>all (1,728 samples, 100%)</title><rect x="10.0" y="421" width="1180.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="13.00" y="431.5" ></text>
+</g>
+<g >
+<title>hash/crc32.ieeeCLMUL (7 samples, 0.41%)</title><rect x="555.6" y="277" width="4.8" height="15.0" fill="rgb(234,137,32)" rx="2" ry="2" />
+<text  x="558.61" y="287.5" ></text>
+</g>
+<g >
+<title>net/url.parseHost (69 samples, 3.99%)</title><rect x="1016.6" y="277" width="47.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="1019.55" y="287.5" >net/..</text>
+</g>
+<g >
+<title>main.(*ReaderStatsTracker).Read (1 samples, 0.06%)</title><rect x="434.1" y="213" width="0.6" height="15.0" fill="rgb(227,101,24)" rx="2" ry="2" />
+<text  x="437.06" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/rt.MoreStack (1 samples, 0.06%)</title><rect x="669.0" y="197" width="0.7" height="15.0" fill="rgb(216,52,12)" rx="2" ry="2" />
+<text  x="671.97" y="207.5" ></text>
+</g>
+<g >
+<title>hash/crc32.simpleUpdate (1 samples, 0.06%)</title><rect x="560.4" y="277" width="0.7" height="15.0" fill="rgb(235,141,33)" rx="2" ry="2" />
+<text  x="563.39" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (6 samples, 0.35%)</title><rect x="709.3" y="309" width="4.1" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="712.26" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go.(*GenericWriter[go.shape.struct (6 samples, 0.35%)</title><rect x="757.7" y="309" width="4.1" height="15.0" fill="rgb(224,91,21)" rx="2" ry="2" />
+<text  x="760.74" y="319.5" ></text>
+</g>
+<g >
+<title>runtime.bool2int (2 samples, 0.12%)</title><rect x="1070.5" y="261" width="1.4" height="15.0" fill="rgb(253,222,53)" rx="2" ry="2" />
+<text  x="1073.50" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.(*sweepLocked).sweep.(*mheap).freeSpan.func2 (4 samples, 0.23%)</title><rect x="1172.9" y="341" width="2.8" height="15.0" fill="rgb(220,73,17)" rx="2" ry="2" />
+<text  x="1175.93" y="351.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcache).nextFree (1 samples, 0.06%)</title><rect x="1166.8" y="197" width="0.7" height="15.0" fill="rgb(222,80,19)" rx="2" ry="2" />
+<text  x="1169.78" y="207.5" ></text>
+</g>
+<g >
+<title>internal/stringslite.HasPrefix (2 samples, 0.12%)</title><rect x="1161.3" y="325" width="1.4" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="1164.32" y="335.5" ></text>
+</g>
+<g >
+<title>internal/bytealg.LastIndexByteString (4 samples, 0.23%)</title><rect x="1158.6" y="325" width="2.7" height="15.0" fill="rgb(243,175,41)" rx="2" ry="2" />
+<text  x="1161.59" y="335.5" ></text>
+</g>
+<g >
+<title>golang.org/x/net/publicsuffix.uint40String.get (5 samples, 0.29%)</title><rect x="844.5" y="293" width="3.4" height="15.0" fill="rgb(240,165,39)" rx="2" ry="2" />
+<text  x="847.47" y="303.5" ></text>
+</g>
+<g >
+<title>sync.(*Pool).Get (1 samples, 0.06%)</title><rect x="692.9" y="53" width="0.7" height="15.0" fill="rgb(241,165,39)" rx="2" ry="2" />
+<text  x="695.87" y="63.5" ></text>
+</g>
+<g >
+<title>runtime.acquirem (1 samples, 0.06%)</title><rect x="708.6" y="261" width="0.7" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="711.58" y="271.5" ></text>
+</g>
+<g >
+<title>net/url.unescape (44 samples, 2.55%)</title><rect x="973.5" y="277" width="30.1" height="15.0" fill="rgb(206,7,1)" rx="2" ry="2" />
+<text  x="976.53" y="287.5" >ne..</text>
+</g>
+<g >
+<title>internal/runtime/syscall.Syscall6 (1 samples, 0.06%)</title><rect x="417.7" y="117" width="0.7" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="420.67" y="127.5" ></text>
+</g>
+<g >
+<title>syscall.Read (7 samples, 0.41%)</title><rect x="394.5" y="181" width="4.7" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="397.46" y="191.5" ></text>
+</g>
+<g >
+<title>fmt.(*pp).doPrintf (1 samples, 0.06%)</title><rect x="803.5" y="293" width="0.7" height="15.0" fill="rgb(251,215,51)" rx="2" ry="2" />
+<text  x="806.50" y="303.5" ></text>
+</g>
+<g >
+<title>strings.ToLower (11 samples, 0.64%)</title><rect x="572.7" y="229" width="7.5" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="575.69" y="239.5" ></text>
+</g>
+<g >
+<title>main.effectiveTLDPlusOne (80 samples, 4.63%)</title><rect x="800.8" y="325" width="54.6" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="803.76" y="335.5" >main...</text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/decoder/api.(*Decoder).Decode (216 samples, 12.50%)</title><rect x="561.1" y="309" width="147.5" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="564.08" y="319.5" >github.com/bytedan..</text>
+</g>
+<g >
+<title>runtime.mallocgcSmallScanNoHeader (1 samples, 0.06%)</title><rect x="471.6" y="213" width="0.7" height="15.0" fill="rgb(216,53,12)" rx="2" ry="2" />
+<text  x="474.62" y="223.5" ></text>
+</g>
+<g >
+<title>bufio.(*Reader).ReadByte (1 samples, 0.06%)</title><rect x="434.1" y="245" width="0.6" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="437.06" y="255.5" ></text>
+</g>
+<g >
+<title>main.etld1 (525 samples, 30.38%)</title><rect x="794.6" y="341" width="358.5" height="15.0" fill="rgb(234,137,32)" rx="2" ry="2" />
+<text  x="797.62" y="351.5" >main.etld1</text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go.(*GenericWriter[go.shape.struct (6 samples, 0.35%)</title><rect x="757.7" y="341" width="4.1" height="15.0" fill="rgb(224,91,21)" rx="2" ry="2" />
+<text  x="760.74" y="351.5" ></text>
+</g>
+<g >
+<title>runtime.newarray (1 samples, 0.06%)</title><rect x="1166.8" y="245" width="0.7" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="1169.78" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.asyncPreempt (1 samples, 0.06%)</title><rect x="849.9" y="293" width="0.7" height="15.0" fill="rgb(243,174,41)" rx="2" ry="2" />
+<text  x="852.93" y="303.5" ></text>
+</g>
+<g >
+<title>internal/stringslite.Cut (6 samples, 0.35%)</title><rect x="1142.9" y="309" width="4.1" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1145.88" y="319.5" ></text>
+</g>
+<g >
+<title>cmpbody (35 samples, 2.03%)</title><rect x="812.4" y="277" width="23.9" height="15.0" fill="rgb(218,62,14)" rx="2" ry="2" />
+<text  x="815.37" y="287.5" >c..</text>
+</g>
+<g >
+<title>runtime.divRoundUp (1 samples, 0.06%)</title><rect x="1071.9" y="261" width="0.6" height="15.0" fill="rgb(211,27,6)" rx="2" ry="2" />
+<text  x="1074.86" y="271.5" ></text>
+</g>
+<g >
+<title>internal/runtime/atomic.(*Uint32).Add (1 samples, 0.06%)</title><rect x="1173.6" y="309" width="0.7" height="15.0" fill="rgb(251,215,51)" rx="2" ry="2" />
+<text  x="1176.61" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/decoder/jitdec.findOrCompile (1 samples, 0.06%)</title><rect x="692.9" y="229" width="0.7" height="15.0" fill="rgb(208,14,3)" rx="2" ry="2" />
+<text  x="695.87" y="239.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*dictDecoder).writeCopy (8 samples, 0.46%)</title><rect x="98.1" y="277" width="5.5" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="101.09" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).freeSpanLocked (3 samples, 0.17%)</title><rect x="1173.6" y="325" width="2.1" height="15.0" fill="rgb(224,91,21)" rx="2" ry="2" />
+<text  x="1176.61" y="335.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/decoder/jitdec.decodeTypedPointer (216 samples, 12.50%)</title><rect x="561.1" y="277" width="147.5" height="15.0" fill="rgb(243,179,42)" rx="2" ry="2" />
+<text  x="564.08" y="287.5" >github.com/bytedan..</text>
+</g>
+<g >
+<title>syscall.read (1 samples, 0.06%)</title><rect x="417.7" y="165" width="0.7" height="15.0" fill="rgb(226,96,23)" rx="2" ry="2" />
+<text  x="420.67" y="175.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (57 samples, 3.30%)</title><rect x="1065.7" y="277" width="38.9" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="1068.72" y="287.5" >run..</text>
+</g>
+<g >
+<title>net/url.escape (2 samples, 0.12%)</title><rect x="864.3" y="293" width="1.3" height="15.0" fill="rgb(223,83,19)" rx="2" ry="2" />
+<text  x="867.27" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcache).nextFree (27 samples, 1.56%)</title><rect x="1078.0" y="245" width="18.4" height="15.0" fill="rgb(222,80,19)" rx="2" ry="2" />
+<text  x="1081.01" y="255.5" ></text>
+</g>
+<g >
+<title>internal/runtime/atomic.(*Uint64).Add (2 samples, 0.12%)</title><rect x="1078.0" y="213" width="1.4" height="15.0" fill="rgb(219,67,16)" rx="2" ry="2" />
+<text  x="1081.01" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic.frozenConfig.UnmarshalFromString (217 samples, 12.56%)</title><rect x="561.1" y="325" width="148.2" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="564.08" y="335.5" >github.com/bytedan..</text>
+</g>
+<g >
+<title>runtime.nanotime (1 samples, 0.06%)</title><rect x="1188.6" y="341" width="0.7" height="15.0" fill="rgb(230,116,27)" rx="2" ry="2" />
+<text  x="1191.63" y="351.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (1 samples, 0.06%)</title><rect x="708.6" y="277" width="0.7" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="711.58" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.findObject (5 samples, 0.29%)</title><rect x="1182.5" y="325" width="3.4" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="1185.49" y="335.5" ></text>
+</g>
+<g >
+<title>net/url.splitHostPort (2 samples, 0.12%)</title><rect x="1162.7" y="325" width="1.4" height="15.0" fill="rgb(224,91,21)" rx="2" ry="2" />
+<text  x="1165.69" y="335.5" ></text>
+</g>
+<g >
+<title>bufio.dropCR (1 samples, 0.06%)</title><rect x="13.4" y="341" width="0.7" height="15.0" fill="rgb(237,150,36)" rx="2" ry="2" />
+<text  x="16.41" y="351.5" ></text>
+</g>
+<g >
+<title>internal/runtime/maps.(*table).rehash (2 samples, 0.12%)</title><rect x="1166.1" y="325" width="1.4" height="15.0" fill="rgb(210,23,5)" rx="2" ry="2" />
+<text  x="1169.10" y="335.5" ></text>
+</g>
+<g >
+<title>runtime.memequal (1 samples, 0.06%)</title><rect x="1004.3" y="277" width="0.6" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="1007.26" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcache).refill (1 samples, 0.06%)</title><rect x="1166.8" y="181" width="0.7" height="15.0" fill="rgb(232,124,29)" rx="2" ry="2" />
+<text  x="1169.78" y="191.5" ></text>
+</g>
+<g >
+<title>net/url.getScheme (7 samples, 0.41%)</title><rect x="1004.9" y="293" width="4.8" height="15.0" fill="rgb(236,146,34)" rx="2" ry="2" />
+<text  x="1007.94" y="303.5" ></text>
+</g>
+<g >
+<title>internal/bytealg.IndexByteString (2 samples, 0.12%)</title><rect x="1135.4" y="261" width="1.3" height="15.0" fill="rgb(252,220,52)" rx="2" ry="2" />
+<text  x="1138.37" y="271.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*decompressor).nextBlock (621 samples, 35.94%)</title><rect x="103.6" y="293" width="424.0" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="106.55" y="303.5" >compress/flate.(*decompressor).nextBlock</text>
+</g>
+<g >
+<title>runtime.heapSetTypeNoHeader (6 samples, 0.35%)</title><rect x="1072.5" y="261" width="4.1" height="15.0" fill="rgb(216,54,12)" rx="2" ry="2" />
+<text  x="1075.55" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgcSmallNoscan (1 samples, 0.06%)</title><rect x="790.5" y="229" width="0.7" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="793.52" y="239.5" ></text>
+</g>
+<g >
+<title>strings.HasSuffix (1 samples, 0.06%)</title><rect x="1136.7" y="309" width="0.7" height="15.0" fill="rgb(242,173,41)" rx="2" ry="2" />
+<text  x="1139.74" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go.(*writerBuffers).encode (1 samples, 0.06%)</title><rect x="761.2" y="261" width="0.6" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="764.16" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.mapaccess2_faststr (6 samples, 0.35%)</title><rect x="565.2" y="229" width="4.1" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="568.17" y="239.5" ></text>
+</g>
+<g >
+<title>internal/runtime/syscall.Syscall6 (7 samples, 0.41%)</title><rect x="394.5" y="117" width="4.7" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="397.46" y="127.5" ></text>
+</g>
+<g >
+<title>main.(*ReaderStatsTracker).Read (1 samples, 0.06%)</title><rect x="417.7" y="213" width="0.7" height="15.0" fill="rgb(227,101,24)" rx="2" ry="2" />
+<text  x="420.67" y="223.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*dictDecoder).tryWriteCopy (50 samples, 2.89%)</title><rect x="481.2" y="277" width="34.1" height="15.0" fill="rgb(229,114,27)" rx="2" ry="2" />
+<text  x="484.18" y="287.5" >co..</text>
+</g>
+<g >
+<title>runtime.(*mheap).alloc.func1 (3 samples, 0.17%)</title><rect x="709.9" y="181" width="2.1" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="712.94" y="191.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/caching.(*_ProgramMap).get (3 samples, 0.17%)</title><rect x="666.9" y="197" width="2.1" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="669.92" y="207.5" ></text>
+</g>
+<g >
+<title>fmt.(*pp).free (1 samples, 0.06%)</title><rect x="804.2" y="293" width="0.7" height="15.0" fill="rgb(215,46,11)" rx="2" ry="2" />
+<text  x="807.18" y="303.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*decompressor).huffmanBlock (109 samples, 6.31%)</title><rect x="29.1" y="293" width="74.5" height="15.0" fill="rgb(207,13,3)" rx="2" ry="2" />
+<text  x="32.12" y="303.5" >compress..</text>
+</g>
+<g >
+<title>internal/stringslite.IndexByte (8 samples, 0.46%)</title><rect x="1137.4" y="293" width="5.5" height="15.0" fill="rgb(231,122,29)" rx="2" ry="2" />
+<text  x="1140.42" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.memmove (28 samples, 1.62%)</title><rect x="496.2" y="261" width="19.1" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="499.20" y="271.5" ></text>
+</g>
+<g >
+<title>internal/bytealg.MakeNoZero (2 samples, 0.12%)</title><rect x="578.1" y="181" width="1.4" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="581.15" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).allocSpan (2 samples, 0.12%)</title><rect x="710.6" y="165" width="1.4" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="713.62" y="175.5" ></text>
+</g>
+<g >
+<title>runtime.(*fixalloc).alloc (3 samples, 0.17%)</title><rect x="1079.4" y="101" width="2.0" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="1082.38" y="111.5" ></text>
+</g>
+<g >
+<title>compress/gzip.(*Reader).Read (772 samples, 44.68%)</title><rect x="28.4" y="325" width="527.2" height="15.0" fill="rgb(208,16,3)" rx="2" ry="2" />
+<text  x="31.44" y="335.5" >compress/gzip.(*Reader).Read</text>
+</g>
+<g >
+<title>runtime.(*mcentral).uncacheSpan (1 samples, 0.06%)</title><rect x="712.7" y="245" width="0.7" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="715.67" y="255.5" ></text>
+</g>
+<g >
+<title>strings.ToLower (6 samples, 0.35%)</title><rect x="642.3" y="165" width="4.1" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="645.34" y="175.5" ></text>
+</g>
+<g >
+<title>runtime.newobject (59 samples, 3.41%)</title><rect x="1064.4" y="293" width="40.2" height="15.0" fill="rgb(221,75,18)" rx="2" ry="2" />
+<text  x="1067.35" y="303.5" >run..</text>
+</g>
+<g >
+<title>runtime.newobject (1 samples, 0.06%)</title><rect x="708.6" y="293" width="0.7" height="15.0" fill="rgb(221,75,18)" rx="2" ry="2" />
+<text  x="711.58" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.mPark (1 samples, 0.06%)</title><rect x="1188.0" y="341" width="0.6" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="1190.95" y="351.5" ></text>
+</g>
+<g >
+<title>runtime.mapassign_faststr (8 samples, 0.46%)</title><rect x="1164.1" y="341" width="5.4" height="15.0" fill="rgb(238,153,36)" rx="2" ry="2" />
+<text  x="1167.05" y="351.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).alloc.func1 (6 samples, 0.35%)</title><rect x="1079.4" y="149" width="4.1" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="1082.38" y="159.5" ></text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go.(*stringType).Encode (1 samples, 0.06%)</title><rect x="761.2" y="245" width="0.6" height="15.0" fill="rgb(216,55,13)" rx="2" ry="2" />
+<text  x="764.16" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgcSmallScanHeader (6 samples, 0.35%)</title><rect x="671.0" y="165" width="4.1" height="15.0" fill="rgb(237,150,35)" rx="2" ry="2" />
+<text  x="674.02" y="175.5" ></text>
+</g>
+<g >
+<title>runtime.nextFreeFast (1 samples, 0.06%)</title><rect x="804.9" y="261" width="0.6" height="15.0" fill="rgb(227,102,24)" rx="2" ry="2" />
+<text  x="807.86" y="271.5" ></text>
+</g>
+<g >
+<title>syscall.Read (1 samples, 0.06%)</title><rect x="417.7" y="181" width="0.7" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="420.67" y="191.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*dictDecoder).availWrite (6 samples, 0.35%)</title><rect x="475.7" y="277" width="4.1" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="478.72" y="287.5" ></text>
+</g>
+<g >
+<title>internal/bytealg.IndexByteString (3 samples, 0.17%)</title><rect x="787.1" y="293" width="2.1" height="15.0" fill="rgb(252,220,52)" rx="2" ry="2" />
+<text  x="790.11" y="303.5" ></text>
+</g>
+<g >
+<title>net/url.(*URL).Hostname (13 samples, 0.75%)</title><rect x="1155.2" y="341" width="8.9" height="15.0" fill="rgb(230,118,28)" rx="2" ry="2" />
+<text  x="1158.17" y="351.5" ></text>
+</g>
+<g >
+<title>golang.org/x/net/publicsuffix.PublicSuffix (62 samples, 3.59%)</title><rect x="805.5" y="309" width="42.4" height="15.0" fill="rgb(237,147,35)" rx="2" ry="2" />
+<text  x="808.54" y="319.5" >gol..</text>
+</g>
+<g >
+<title>syscall.Syscall (1 samples, 0.06%)</title><rect x="417.7" y="149" width="0.7" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="420.67" y="159.5" ></text>
+</g>
+<g >
+<title>runtime.gopark (1 samples, 0.06%)</title><rect x="1189.3" y="373" width="0.7" height="15.0" fill="rgb(219,65,15)" rx="2" ry="2" />
+<text  x="1192.32" y="383.5" ></text>
+</g>
+<g >
+<title>decode_ (1 samples, 0.06%)</title><rect x="10.0" y="405" width="0.7" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="13.00" y="415.5" ></text>
+</g>
+<g >
+<title>strconv.appendEscapedRune (1 samples, 0.06%)</title><rect x="803.5" y="213" width="0.7" height="15.0" fill="rgb(250,208,49)" rx="2" ry="2" />
+<text  x="806.50" y="223.5" ></text>
+</g>
+<g >
+<title>internal/runtime/maps.bitset.removeFirst (1 samples, 0.06%)</title><rect x="1167.5" y="325" width="0.6" height="15.0" fill="rgb(226,99,23)" rx="2" ry="2" />
+<text  x="1170.47" y="335.5" ></text>
+</g>
+<g >
+<title>strings.ToLower (1 samples, 0.06%)</title><rect x="1104.6" y="293" width="0.7" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="1107.64" y="303.5" ></text>
+</g>
+<g >
+<title>internal/bytealg.MakeNoZero (1 samples, 0.06%)</title><rect x="1002.9" y="229" width="0.7" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="1005.89" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.newobject (1 samples, 0.06%)</title><rect x="802.8" y="293" width="0.7" height="15.0" fill="rgb(221,75,18)" rx="2" ry="2" />
+<text  x="805.81" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).nextSpanForSweep (3 samples, 0.17%)</title><rect x="1175.7" y="373" width="2.0" height="15.0" fill="rgb(235,141,33)" rx="2" ry="2" />
+<text  x="1178.66" y="383.5" ></text>
+</g>
+<g >
+<title>golang.org/x/net/publicsuffix.uint40String.get (1 samples, 0.06%)</title><rect x="850.6" y="309" width="0.7" height="15.0" fill="rgb(240,165,39)" rx="2" ry="2" />
+<text  x="853.61" y="319.5" ></text>
+</g>
+<g >
+<title>net/url.unhex (1 samples, 0.06%)</title><rect x="1003.6" y="277" width="0.7" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="1006.58" y="287.5" ></text>
+</g>
+<g >
+<title>internal/stringslite.HasPrefix (1 samples, 0.06%)</title><rect x="792.6" y="325" width="0.7" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="795.57" y="335.5" ></text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go/encoding.EncodeByteArray (1 samples, 0.06%)</title><rect x="761.2" y="229" width="0.6" height="15.0" fill="rgb(207,11,2)" rx="2" ry="2" />
+<text  x="764.16" y="239.5" ></text>
+</g>
+<g >
+<title>indexbytebody (21 samples, 1.22%)</title><rect x="14.1" y="325" width="14.3" height="15.0" fill="rgb(206,8,1)" rx="2" ry="2" />
+<text  x="17.10" y="335.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*decompressor).huffSym (14 samples, 0.81%)</title><rect x="425.2" y="261" width="9.5" height="15.0" fill="rgb(249,202,48)" rx="2" ry="2" />
+<text  x="428.19" y="271.5" ></text>
+</g>
+<g >
+<title>internal/stringslite.Index (1 samples, 0.06%)</title><rect x="1143.6" y="293" width="0.6" height="15.0" fill="rgb(241,167,40)" rx="2" ry="2" />
+<text  x="1146.56" y="303.5" ></text>
+</g>
+<g >
+<title>strings.(*Builder).grow (1 samples, 0.06%)</title><rect x="1002.9" y="245" width="0.7" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="1005.89" y="255.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*decompressor).readHuffman (83 samples, 4.80%)</title><rect x="419.0" y="277" width="56.7" height="15.0" fill="rgb(224,91,21)" rx="2" ry="2" />
+<text  x="422.04" y="287.5" >compre..</text>
+</g>
+<g >
+<title>internal/runtime/maps.ctrlGroup.matchH2 (1 samples, 0.06%)</title><rect x="1168.1" y="325" width="0.7" height="15.0" fill="rgb(221,77,18)" rx="2" ry="2" />
+<text  x="1171.15" y="335.5" ></text>
+</g>
+<g >
+<title>errors.New (1 samples, 0.06%)</title><rect x="802.8" y="309" width="0.7" height="15.0" fill="rgb(219,67,16)" rx="2" ry="2" />
+<text  x="805.81" y="319.5" ></text>
+</g>
+<g >
+<title>strings.LastIndex (2 samples, 0.12%)</title><rect x="1062.3" y="261" width="1.4" height="15.0" fill="rgb(225,92,22)" rx="2" ry="2" />
+<text  x="1065.30" y="271.5" ></text>
+</g>
+<g >
+<title>syscall.RawSyscall6 (7 samples, 0.41%)</title><rect x="394.5" y="133" width="4.7" height="15.0" fill="rgb(241,167,40)" rx="2" ry="2" />
+<text  x="397.46" y="143.5" ></text>
+</g>
+<g >
+<title>bufio.ScanLines (2 samples, 0.12%)</title><rect x="12.0" y="341" width="1.4" height="15.0" fill="rgb(235,138,33)" rx="2" ry="2" />
+<text  x="15.05" y="351.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgcSmallScanNoHeader (35 samples, 2.03%)</title><rect x="1076.6" y="261" width="23.9" height="15.0" fill="rgb(216,53,12)" rx="2" ry="2" />
+<text  x="1079.64" y="271.5" >r..</text>
+</g>
+<g >
+<title>internal/runtime/maps.(*Map).getWithoutKeySmallFastStr (13 samples, 0.75%)</title><rect x="633.5" y="149" width="8.8" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="636.46" y="159.5" ></text>
+</g>
+<g >
+<title>runtime.sweepone (11 samples, 0.64%)</title><rect x="1170.9" y="389" width="7.5" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1173.88" y="399.5" ></text>
+</g>
+<g >
+<title>internal/runtime/maps.(*table).split (1 samples, 0.06%)</title><rect x="1166.8" y="309" width="0.7" height="15.0" fill="rgb(220,71,17)" rx="2" ry="2" />
+<text  x="1169.78" y="319.5" ></text>
+</g>
+<g >
+<title>internal/bytealg.IndexString (2 samples, 0.12%)</title><rect x="1149.0" y="293" width="1.4" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="1152.03" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (2 samples, 0.12%)</title><rect x="578.1" y="165" width="1.4" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="581.15" y="175.5" ></text>
+</g>
+<g >
+<title>strings.Cut (13 samples, 0.75%)</title><rect x="1127.9" y="309" width="8.8" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="1130.86" y="319.5" ></text>
+</g>
+<g >
+<title>decode_ (165 samples, 9.55%)</title><rect x="580.2" y="229" width="112.7" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="583.20" y="239.5" >decode_</text>
+</g>
+<g >
+<title>memeqbody (1 samples, 0.06%)</title><rect x="836.3" y="277" width="0.7" height="15.0" fill="rgb(242,173,41)" rx="2" ry="2" />
+<text  x="839.27" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).freeSpan (4 samples, 0.23%)</title><rect x="1172.9" y="373" width="2.8" height="15.0" fill="rgb(212,32,7)" rx="2" ry="2" />
+<text  x="1175.93" y="383.5" ></text>
+</g>
+<g >
+<title>runtime.(*pallocBits).summarize (1 samples, 0.06%)</title><rect x="1174.3" y="277" width="0.7" height="15.0" fill="rgb(249,206,49)" rx="2" ry="2" />
+<text  x="1177.29" y="287.5" ></text>
+</g>
+<g >
+<title>internal/runtime/atomic.(*UnsafePointer).Load (1 samples, 0.06%)</title><rect x="1177.0" y="357" width="0.7" height="15.0" fill="rgb(221,75,18)" rx="2" ry="2" />
+<text  x="1180.03" y="367.5" ></text>
+</g>
+<g >
+<title>bufio.(*Reader).ReadByte (1 samples, 0.06%)</title><rect x="418.4" y="261" width="0.6" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="421.36" y="271.5" ></text>
+</g>
+<g >
+<title>skip_one (15 samples, 0.87%)</title><rect x="695.6" y="245" width="10.2" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="698.60" y="255.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*decompressor).Reset (2 samples, 0.12%)</title><rect x="554.2" y="293" width="1.4" height="15.0" fill="rgb(239,159,38)" rx="2" ry="2" />
+<text  x="557.25" y="303.5" ></text>
+</g>
+<g >
+<title>internal/stringslite.HasSuffix (2 samples, 0.12%)</title><rect x="799.4" y="325" width="1.4" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="802.40" y="335.5" ></text>
+</g>
+<g >
+<title>runtime.typePointers.next (1 samples, 0.06%)</title><rect x="1186.6" y="325" width="0.7" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="1189.59" y="335.5" ></text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointers (19 samples, 1.10%)</title><rect x="1083.5" y="165" width="12.9" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="1086.47" y="175.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcache).nextFree (5 samples, 0.29%)</title><rect x="709.9" y="277" width="3.5" height="15.0" fill="rgb(222,80,19)" rx="2" ry="2" />
+<text  x="712.94" y="287.5" ></text>
+</g>
+<g >
+<title>net/url.unescape (1 samples, 0.06%)</title><rect x="865.6" y="293" width="0.7" height="15.0" fill="rgb(206,7,1)" rx="2" ry="2" />
+<text  x="868.64" y="303.5" ></text>
+</g>
+<g >
+<title>internal/stringslite.IndexByte (12 samples, 0.69%)</title><rect x="1128.5" y="277" width="8.2" height="15.0" fill="rgb(231,122,29)" rx="2" ry="2" />
+<text  x="1131.54" y="287.5" ></text>
+</g>
+<g >
+<title>decode_ (119 samples, 6.89%)</title><rect x="585.7" y="197" width="81.2" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="588.66" y="207.5" >decode_</text>
+</g>
+<g >
+<title>compress/flate.(*huffmanDecoder).init (55 samples, 3.18%)</title><rect x="435.4" y="261" width="37.6" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="438.43" y="271.5" >com..</text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/decoder/api.NewDecoder (1 samples, 0.06%)</title><rect x="708.6" y="309" width="0.7" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="711.58" y="319.5" ></text>
+</g>
+<g >
+<title>golang.org/x/net/idna.ascii (2 samples, 0.12%)</title><rect x="791.2" y="325" width="1.4" height="15.0" fill="rgb(242,171,40)" rx="2" ry="2" />
+<text  x="794.20" y="335.5" ></text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go.(*ColumnWriter).recordPageStats (1 samples, 0.06%)</title><rect x="757.7" y="261" width="0.7" height="15.0" fill="rgb(234,137,32)" rx="2" ry="2" />
+<text  x="760.74" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcentral).grow (1 samples, 0.06%)</title><rect x="1166.8" y="149" width="0.7" height="15.0" fill="rgb(233,130,31)" rx="2" ry="2" />
+<text  x="1169.78" y="159.5" ></text>
+</g>
+<g >
+<title>runtime.typeAssert (1 samples, 0.06%)</title><rect x="761.8" y="277" width="0.7" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="764.84" y="287.5" ></text>
+</g>
+<g >
+<title>internal/runtime/atomic.(*Uint32).Add (1 samples, 0.06%)</title><rect x="1176.3" y="357" width="0.7" height="15.0" fill="rgb(251,215,51)" rx="2" ry="2" />
+<text  x="1179.34" y="367.5" ></text>
+</g>
+<g >
+<title>golang.org/x/net/publicsuffix.find (46 samples, 2.66%)</title><rect x="806.9" y="293" width="31.4" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="809.91" y="303.5" >go..</text>
+</g>
+<g >
+<title>golang.org/x/text/unicode/bidi.LookupString (1 samples, 0.06%)</title><rect x="780.3" y="293" width="0.7" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="783.28" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.makeslice (3 samples, 0.17%)</title><rect x="470.9" y="245" width="2.1" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="473.94" y="255.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*dictDecoder).tryWriteCopy (15 samples, 0.87%)</title><rect x="528.3" y="293" width="10.2" height="15.0" fill="rgb(229,114,27)" rx="2" ry="2" />
+<text  x="531.30" y="303.5" ></text>
+</g>
+<g >
+<title>sync.(*Pool).pin (1 samples, 0.06%)</title><rect x="804.2" y="261" width="0.7" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="807.18" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.slicebytetostring (71 samples, 4.11%)</title><rect x="709.3" y="325" width="48.4" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="712.26" y="335.5" >runt..</text>
+</g>
+<g >
+<title>compress/flate.(*decompressor).moreBits (9 samples, 0.52%)</title><rect x="91.9" y="277" width="6.2" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="94.94" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.(*sweepLocker).tryAcquire (1 samples, 0.06%)</title><rect x="1177.7" y="373" width="0.7" height="15.0" fill="rgb(240,162,38)" rx="2" ry="2" />
+<text  x="1180.71" y="383.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*decompressor).moreBits (1 samples, 0.06%)</title><rect x="418.4" y="277" width="0.6" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="421.36" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/klauspost/compress/s2.encodeSnappyBetterBlockAsm (4 samples, 0.23%)</title><rect x="758.4" y="197" width="2.8" height="15.0" fill="rgb(247,193,46)" rx="2" ry="2" />
+<text  x="761.43" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).allocSpan (6 samples, 0.35%)</title><rect x="1079.4" y="133" width="4.1" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="1082.38" y="143.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/decoder/jitdec.(*_Assembler).Load (1 samples, 0.06%)</title><rect x="692.9" y="197" width="0.7" height="15.0" fill="rgb(236,145,34)" rx="2" ry="2" />
+<text  x="695.87" y="207.5" ></text>
+</g>
+<g >
+<title>memeqbody (2 samples, 0.12%)</title><rect x="799.4" y="309" width="1.4" height="15.0" fill="rgb(242,173,41)" rx="2" ry="2" />
+<text  x="802.40" y="319.5" ></text>
+</g>
+<g >
+<title>time.Sleep (1 samples, 0.06%)</title><rect x="1189.3" y="389" width="0.7" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="1192.32" y="399.5" ></text>
+</g>
+<g >
+<title>compress/flate.(*dictDecoder).histSize (2 samples, 0.12%)</title><rect x="479.8" y="277" width="1.4" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
+<text  x="482.81" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/jit.(*BaseAssembler).build.func1 (1 samples, 0.06%)</title><rect x="692.9" y="133" width="0.7" height="15.0" fill="rgb(224,91,21)" rx="2" ry="2" />
+<text  x="695.87" y="143.5" ></text>
+</g>
+<g >
+<title>runtime.memmove (1 samples, 0.06%)</title><rect x="579.5" y="181" width="0.7" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="582.51" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.heapSetTypeNoHeader (1 samples, 0.06%)</title><rect x="470.9" y="213" width="0.7" height="15.0" fill="rgb(216,54,12)" rx="2" ry="2" />
+<text  x="473.94" y="223.5" ></text>
+</g>
+<g >
+<title>internal/runtime/maps.newTable (1 samples, 0.06%)</title><rect x="1166.8" y="293" width="0.7" height="15.0" fill="rgb(228,109,26)" rx="2" ry="2" />
+<text  x="1169.78" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).allocMSpanLocked (3 samples, 0.17%)</title><rect x="1079.4" y="117" width="2.0" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="1082.38" y="127.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic.frozenConfig.Unmarshal (288 samples, 16.67%)</title><rect x="561.1" y="341" width="196.6" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="564.08" y="351.5" >github.com/bytedance/soni..</text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go.(*writerBuffers).compress (4 samples, 0.23%)</title><rect x="758.4" y="261" width="2.8" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="761.43" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go.(*offsetTrackingWriter).WriteString (1 samples, 0.06%)</title><rect x="761.8" y="309" width="0.7" height="15.0" fill="rgb(221,76,18)" rx="2" ry="2" />
+<text  x="764.84" y="319.5" ></text>
+</g>
+<g >
+<title>internal/poll.(*FD).Read (1 samples, 0.06%)</title><rect x="91.3" y="197" width="0.6" height="15.0" fill="rgb(226,101,24)" rx="2" ry="2" />
+<text  x="94.26" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.(*gcWork).tryGetObj (1 samples, 0.06%)</title><rect x="1178.4" y="341" width="0.7" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
+<text  x="1181.39" y="351.5" ></text>
+</g>
+<g >
+<title>runtime.systemstack (13 samples, 0.75%)</title><rect x="1178.4" y="389" width="8.9" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="1181.39" y="399.5" ></text>
+</g>
+<g >
+<title>main.mapPhase.func2 (1,699 samples, 98.32%)</title><rect x="10.7" y="389" width="1160.2" height="15.0" fill="rgb(246,193,46)" rx="2" ry="2" />
+<text  x="13.68" y="399.5" >main.mapPhase.func2</text>
+</g>
+<g >
+<title>compress/flate.(*dictDecoder).writeByte (5 samples, 0.29%)</title><rect x="538.5" y="293" width="3.5" height="15.0" fill="rgb(235,142,33)" rx="2" ry="2" />
+<text  x="541.54" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).allocMSpanLocked (1 samples, 0.06%)</title><rect x="710.6" y="149" width="0.7" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="713.62" y="159.5" ></text>
+</g>
+<g >
+<title>github.com/bytedance/sonic/internal/rt.GrowSlice (11 samples, 0.64%)</title><rect x="669.7" y="213" width="7.5" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="672.65" y="223.5" ></text>
+</g>
+<g >
+<title>strconv.appendQuotedWith (1 samples, 0.06%)</title><rect x="803.5" y="229" width="0.7" height="15.0" fill="rgb(220,70,16)" rx="2" ry="2" />
+<text  x="806.50" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).initSpan (1 samples, 0.06%)</title><rect x="709.3" y="197" width="0.6" height="15.0" fill="rgb(245,187,44)" rx="2" ry="2" />
+<text  x="712.26" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.park_m (3 samples, 0.17%)</title><rect x="1187.3" y="389" width="2.0" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="1190.27" y="399.5" ></text>
+</g>
+<g >
+<title>sync.(*Pool).Put (1 samples, 0.06%)</title><rect x="804.2" y="277" width="0.7" height="15.0" fill="rgb(229,112,26)" rx="2" ry="2" />
+<text  x="807.18" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (1 samples, 0.06%)</title><rect x="802.8" y="277" width="0.7" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="805.81" y="287.5" ></text>
+</g>
+<g >
+<title>internal/runtime/atomic.(*Uint32).Add (1 samples, 0.06%)</title><rect x="972.8" y="181" width="0.7" height="15.0" fill="rgb(251,215,51)" rx="2" ry="2" />
+<text  x="975.85" y="191.5" ></text>
+</g>
+<g >
+<title>strings.(*Builder).copyCheck (1 samples, 0.06%)</title><rect x="572.0" y="229" width="0.7" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="575.00" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.mcall (3 samples, 0.17%)</title><rect x="1187.3" y="405" width="2.0" height="15.0" fill="rgb(213,40,9)" rx="2" ry="2" />
+<text  x="1190.27" y="415.5" ></text>
+</g>
+<g >
+<title>runtime.(*fixalloc).alloc (1 samples, 0.06%)</title><rect x="1166.8" y="53" width="0.7" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="1169.78" y="63.5" ></text>
+</g>
+<g >
+<title>syscall.Syscall (7 samples, 0.41%)</title><rect x="394.5" y="149" width="4.7" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="397.46" y="159.5" ></text>
+</g>
+<g >
+<title>internal/bytealg.LastIndexByteString (2 samples, 0.12%)</title><rect x="798.0" y="325" width="1.4" height="15.0" fill="rgb(243,175,41)" rx="2" ry="2" />
+<text  x="801.03" y="335.5" ></text>
+</g>
+<g >
+<title>syscall.RawSyscall6 (1 samples, 0.06%)</title><rect x="434.1" y="133" width="0.6" height="15.0" fill="rgb(241,167,40)" rx="2" ry="2" />
+<text  x="437.06" y="143.5" ></text>
+</g>
+<g >
+<title>bufio.(*Reader).fill (1 samples, 0.06%)</title><rect x="417.7" y="229" width="0.7" height="15.0" fill="rgb(205,1,0)" rx="2" ry="2" />
+<text  x="420.67" y="239.5" ></text>
+</g>
+<g >
+<title>memeqbody (1 samples, 0.06%)</title><rect x="890.2" y="277" width="0.7" height="15.0" fill="rgb(242,173,41)" rx="2" ry="2" />
+<text  x="893.22" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/parquet-go/parquet-go/encoding/delta.encodeByteArrayLengths (1 samples, 0.06%)</title><rect x="761.2" y="197" width="0.6" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="764.16" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (1 samples, 0.06%)</title><rect x="1166.8" y="229" width="0.7" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="1169.78" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.(*mheap).alloc.func1 (1 samples, 0.06%)</title><rect x="1166.8" y="101" width="0.7" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="1169.78" y="111.5" ></text>
+</g>
+<g >
+<title>internal/stringslite.HasPrefix (1 samples, 0.06%)</title><rect x="862.2" y="309" width="0.7" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="865.22" y="319.5" ></text>
+</g>
+</g>
+</svg>
