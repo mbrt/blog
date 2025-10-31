@@ -1,7 +1,7 @@
 ---
 title: "Domain resurrect"
 date: 2025-10-31
-tags: [cloud]
+tags: [cloud, data-science]
 toc: true
 ---
 
