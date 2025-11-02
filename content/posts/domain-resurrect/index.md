@@ -1,5 +1,5 @@
 ---
-title: "Domain resurrect"
+title: "Resurrecting valuable expired domains"
 date: 2025-10-31
 tags: [cloud, data-science]
 toc: true
@@ -661,6 +661,11 @@ drop catching](https://en.wikipedia.org/wiki/Domain_drop_catching).
 So, what's the probability that there indeed **is** some hidden gem, forgotten by
 everybody, waiting just for me to take? Probably close to zero. But I wanted to
 try anyway.
+
+At this point, I could continue optimizing and improving the ranking algorithms,
+but decided not to. The first category of domains I found above (domains that
+are interesting but not available), made me think that whatever is mildly
+interesting, was already found by somebody.
 
 OK, so what was the point of this post? Perhaps it looks like a flex, or a
 pointless exercise of someone with too much time on their hands. Maybe there's
