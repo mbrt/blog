@@ -421,3 +421,20 @@ footer {
 :root[data-theme="dark"] .share-buttons a {
     background: var(--neo-accent-3);
 }
+
+/* Top Link Button (Scroll to Top) */
+.top-link {
+    background: var(--neo-accent-1) !important;
+    border: var(--neo-border-thin) solid var(--neo-border) !important;
+    box-shadow: 3px 3px 0 var(--neo-shadow) !important;
+    transition: transform 0.1s, box-shadow 0.1s, visibility 0.5s, opacity 0.8s linear !important;
+}
+
+.top-link:hover {
+    transform: translate(-1px, -1px) !important;
+    box-shadow: 4px 4px 0 var(--neo-shadow) !important;
+}
+
+.top-link svg {
+    fill: var(--neo-text) !important;
+}
