@@ -265,7 +265,7 @@ footer {
 /* Social Icons */
 .social-icons a {
     border: var(--neo-border-thin) solid var(--neo-border);
-    background: var(--neo-card-bg);
+    background: var(--neo-accent-3);
     box-shadow: 3px 3px 0 var(--neo-shadow);
     transition: transform 0.1s, box-shadow 0.1s;
 }
@@ -328,7 +328,7 @@ footer {
 /* Theme Toggle Button */
 #theme-toggle {
     border: var(--neo-border-thin) solid var(--neo-border);
-    background: var(--neo-card-bg);
+    background: var(--neo-accent-2);
     box-shadow: 3px 3px 0 var(--neo-shadow);
     height: 36px;
     padding: 6px 8px;
