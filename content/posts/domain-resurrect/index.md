@@ -404,7 +404,7 @@ choice](https://github.com/mbrt/domain-resurrect/blob/536322ecebd38c4aacb602a60b
 As a first set of attempts, I tried to implement some PageRank variations
 straight from the literature:
 
-* TrustRank [[Gyongyi, Z., et. al,
+* TrustRank [[Gyongyi, Z. et al,
   2004.](https://www.vldb.org/conf/2004/RS15P3.PDF)], biases the teleport vector
   towards a curated set of trusted pages.
 * Anti-Trust Rank [[Krishnan, V. and Raj, R.,
