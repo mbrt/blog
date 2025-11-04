@@ -1,0 +1,423 @@
+/* Neobrutalism Design Override */
+
+:root {
+    /* Light Theme Colors */
+    --neo-bg: #FFFFFF;
+    --neo-text: #000000;
+    --neo-border: #000000;
+    --neo-shadow: #000000;
+    --neo-accent-1: #FFEE00;
+    --neo-accent-2: #00D9FF;
+    --neo-accent-3: #FF006E;
+    --neo-card-bg: #FFFFFF;
+    --neo-code-bg: #F5F5F5;
+    --neo-header-bg: #FFEE00;
+    
+    /* Core Variables Override */
+    --gap: 24px;
+    --content-gap: 20px;
+    --radius: 0px; /* No rounded corners */
+    --theme: var(--neo-bg);
+    --entry: var(--neo-card-bg);
+    --primary: var(--neo-text);
+    --secondary: var(--neo-text);
+    --tertiary: var(--neo-border);
+    --content: var(--neo-text);
+    --border: var(--neo-border);
+    
+    /* Border thickness */
+    --neo-border-width: 4px;
+    --neo-border-thin: 2px;
+    
+    /* Shadow offset */
+    --neo-shadow-offset: 6px;
+}
+
+:root[data-theme="dark"] {
+    /* Dark Theme Colors */
+    --neo-bg: #0A0A0A;
+    --neo-text: #FFFFFF;
+    --neo-border: #FFFFFF;
+    --neo-shadow: #FFFFFF;
+    --neo-accent-1: #00D9FF;
+    --neo-accent-2: #39FF14;
+    --neo-accent-3: #FF1493;
+    --neo-card-bg: #1A1A1A;
+    --neo-code-bg: #2A2A2A;
+    --neo-header-bg: #00D9FF;
+    
+    --theme: var(--neo-bg);
+    --entry: var(--neo-card-bg);
+    --primary: var(--neo-text);
+    --secondary: var(--neo-text);
+    --tertiary: var(--neo-border);
+    --content: var(--neo-text);
+    --border: var(--neo-border);
+}
+
+/* Global Styles */
+* {
+    border-radius: 0 !important; /* Force sharp corners everywhere */
+}
+
+body {
+    background: var(--neo-bg);
+    color: var(--neo-text);
+    font-weight: 500;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 900 !important;
+    color: var(--neo-text);
+}
+
+strong, b {
+    font-weight: 900;
+}
+
+/* Header */
+.nav {
+    background: var(--neo-header-bg);
+    border-bottom: var(--neo-border-width) solid var(--neo-border);
+    box-shadow: 0 var(--neo-shadow-offset) 0 var(--neo-shadow);
+}
+
+.logo a,
+.menu a {
+    color: var(--neo-text) !important;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.menu a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+}
+
+/* Main Content */
+.main {
+    background: var(--neo-bg);
+    margin-top: calc(var(--neo-shadow-offset) + var(--gap));
+}
+
+.page-header h1 {
+    font-weight: 900;
+    border-bottom: var(--neo-border-width) solid var(--neo-border);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+}
+
+/* Post Entries */
+.post-entry {
+    background: var(--neo-card-bg);
+    border: var(--neo-border-width) solid var(--neo-border);
+    box-shadow: var(--neo-shadow-offset) var(--neo-shadow-offset) 0 var(--neo-shadow);
+    transition: transform 0.1s, box-shadow 0.1s;
+    margin-bottom: calc(var(--gap) + var(--neo-shadow-offset));
+}
+
+.post-entry:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: calc(var(--neo-shadow-offset) + 2px) calc(var(--neo-shadow-offset) + 2px) 0 var(--neo-shadow);
+}
+
+.post-entry:active {
+    transform: translate(2px, 2px);
+    box-shadow: calc(var(--neo-shadow-offset) - 2px) calc(var(--neo-shadow-offset) - 2px) 0 var(--neo-shadow);
+}
+
+.first-entry {
+    background: var(--neo-accent-1);
+    border: var(--neo-border-width) solid var(--neo-border);
+    box-shadow: var(--neo-shadow-offset) var(--neo-shadow-offset) 0 var(--neo-shadow);
+    padding: var(--gap);
+}
+
+.first-entry .entry-header h1 {
+    color: var(--neo-text);
+    font-weight: 900;
+}
+
+/* Buttons and Links */
+a {
+    color: var(--neo-text);
+    text-decoration: underline;
+    text-decoration-color: var(--neo-accent-2);
+    text-decoration-thickness: 2px;
+}
+
+.pagination a {
+    background: var(--neo-accent-2);
+    color: var(--neo-text);
+    border: var(--neo-border-thin) solid var(--neo-border);
+    box-shadow: 3px 3px 0 var(--neo-shadow);
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.pagination a:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--neo-shadow);
+}
+
+.pagination a:active {
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 var(--neo-shadow);
+}
+
+/* Code Blocks */
+pre, code {
+    background: var(--neo-code-bg) !important;
+    border: var(--neo-border-thin) solid var(--neo-border);
+    font-weight: 500;
+}
+
+div.highlight {
+    border: var(--neo-border-width) solid var(--neo-border);
+    box-shadow: 4px 4px 0 var(--neo-shadow);
+    background: var(--neo-code-bg);
+}
+
+.copy-code {
+    background: var(--neo-accent-3) !important;
+    color: var(--neo-text) !important;
+    border: var(--neo-border-thin) solid var(--neo-border) !important;
+    font-weight: 700;
+    box-shadow: 2px 2px 0 var(--neo-shadow);
+}
+
+/* Post Single Page */
+.post-single .post-title {
+    font-weight: 900;
+    border-bottom: var(--neo-border-width) solid var(--neo-border);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+}
+
+.post-content {
+    font-weight: 500;
+    line-height: 1.8;
+}
+
+.post-content h1,
+.post-content h2,
+.post-content h3,
+.post-content h4 {
+    border-left: 6px solid var(--neo-accent-1);
+    padding-left: 16px;
+    margin-top: 32px;
+    margin-bottom: 16px;
+}
+
+.post-content img {
+    border: var(--neo-border-width) solid var(--neo-border);
+    box-shadow: var(--neo-shadow-offset) var(--neo-shadow-offset) 0 var(--neo-shadow);
+}
+
+.post-content blockquote {
+    border-left: 6px solid var(--neo-accent-3);
+    background: var(--neo-card-bg);
+    border-top: var(--neo-border-thin) solid var(--neo-border);
+    border-right: var(--neo-border-thin) solid var(--neo-border);
+    border-bottom: var(--neo-border-thin) solid var(--neo-border);
+    padding: 16px 20px;
+    font-style: normal;
+    font-weight: 600;
+}
+
+/* Table of Contents */
+.toc {
+    background: var(--neo-card-bg);
+    border: var(--neo-border-width) solid var(--neo-border);
+    box-shadow: 4px 4px 0 var(--neo-shadow);
+    padding: 20px;
+}
+
+.toc summary {
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.toc a {
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.toc a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+}
+
+/* Footer */
+footer {
+    background: var(--neo-bg);
+    border-top: var(--neo-border-width) solid var(--neo-border);
+    box-shadow: 0 calc(-1 * var(--neo-shadow-offset)) 0 var(--neo-shadow);
+    padding: 24px;
+}
+
+/* Social Icons */
+.social-icons a {
+    border: var(--neo-border-thin) solid var(--neo-border);
+    background: var(--neo-card-bg);
+    box-shadow: 3px 3px 0 var(--neo-shadow);
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.social-icons a:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--neo-shadow);
+}
+
+.social-icons a svg {
+    fill: var(--neo-text);
+}
+
+/* Tags */
+.terms-tags a {
+    background: var(--neo-accent-1);
+    border: var(--neo-border-thin) solid var(--neo-border);
+    box-shadow: 3px 3px 0 var(--neo-shadow);
+    color: var(--neo-text);
+    font-weight: 700;
+    text-decoration: none;
+    padding: 8px 16px;
+    display: inline-block;
+    margin: 4px;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.terms-tags a:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--neo-shadow);
+}
+
+:root[data-theme="dark"] .terms-tags a {
+    background: var(--neo-accent-1);
+}
+
+/* Search */
+#searchResults li {
+    border: var(--neo-border-thin) solid var(--neo-border);
+    background: var(--neo-card-bg);
+    box-shadow: 3px 3px 0 var(--neo-shadow);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+#searchInput {
+    border: var(--neo-border-width) solid var(--neo-border);
+    background: var(--neo-card-bg);
+    color: var(--neo-text);
+    font-weight: 600;
+    padding: 12px;
+    font-size: 16px;
+}
+
+#searchInput:focus {
+    outline: none;
+    box-shadow: 4px 4px 0 var(--neo-shadow);
+}
+
+/* Theme Toggle Button */
+#theme-toggle {
+    border: var(--neo-border-thin) solid var(--neo-border);
+    background: var(--neo-card-bg);
+    box-shadow: 3px 3px 0 var(--neo-shadow);
+    height: 36px;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#theme-toggle:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--neo-shadow);
+}
+
+/* Archive Page */
+.archive-year {
+    border-left: 6px solid var(--neo-accent-2);
+    padding-left: 16px;
+    font-weight: 900;
+}
+
+.archive-entry {
+    border-bottom: var(--neo-border-thin) solid var(--neo-border);
+    padding: 12px 0;
+}
+
+.archive-entry:hover {
+    background: var(--neo-card-bg);
+    padding-left: 8px;
+}
+
+/* Profile Mode / Home Info */
+.home-info {
+    background: var(--neo-card-bg);
+    border: var(--neo-border-width) solid var(--neo-border);
+    box-shadow: var(--neo-shadow-offset) var(--neo-shadow-offset) 0 var(--neo-shadow);
+}
+
+.home-info .entry-content {
+    font-weight: 500;
+}
+
+/* Breadcrumbs */
+.breadcrumbs a {
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+}
+
+/* Post Navigation */
+.post-nav-links {
+    border-top: var(--neo-border-width) solid var(--neo-border);
+    border-bottom: var(--neo-border-width) solid var(--neo-border);
+    padding: 24px 0;
+    margin: 32px 0;
+}
+
+.post-nav-links a {
+    background: var(--neo-card-bg);
+    border: var(--neo-border-thin) solid var(--neo-border);
+    box-shadow: 3px 3px 0 var(--neo-shadow);
+    padding: 12px;
+    display: block;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.post-nav-links a:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--neo-shadow);
+}
+
+/* Share Buttons */
+.share-buttons a {
+    border: var(--neo-border-thin) solid var(--neo-border);
+    background: var(--neo-accent-3);
+    box-shadow: 3px 3px 0 var(--neo-shadow);
+    padding: 8px 12px;
+    color: var(--neo-text);
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.share-buttons a:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--neo-shadow);
+}
+
+:root[data-theme="dark"] .share-buttons a {
+    background: var(--neo-accent-3);
+}
