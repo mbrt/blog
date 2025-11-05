@@ -281,7 +281,7 @@ footer {
 
 /* Tags */
 .terms-tags a {
-    background: var(--neo-accent-1);
+    background: var(--neo-accent-2);
     border: var(--neo-border-thin) solid var(--neo-border);
     box-shadow: 3px 3px 0 var(--neo-shadow);
     color: var(--neo-text);
@@ -299,6 +299,30 @@ footer {
 }
 
 :root[data-theme="dark"] .terms-tags a {
+    background: var(--neo-accent-1);
+}
+
+/* Post Tags */
+.post-tags a {
+    background: var(--neo-accent-2);
+    border: var(--neo-border-thin) solid var(--neo-border);
+    box-shadow: 3px 3px 0 var(--neo-shadow);
+    color: var(--neo-text);
+    font-weight: 700;
+    text-decoration: none;
+    padding: 8px 16px;
+    display: inline-block;
+    margin: 4px;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.post-tags a:hover {
+    background: var(--neo-accent-2) !important;
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--neo-shadow);
+}
+
+:root[data-theme="dark"] .post-tags a {
     background: var(--neo-accent-1);
 }
 
@@ -412,6 +436,11 @@ footer {
 .post-nav-links a:hover {
     transform: translate(-1px, -1px);
     box-shadow: 4px 4px 0 var(--neo-shadow);
+}
+
+/* Pagination Navigation (prev/next posts) */
+.paginav a:hover {
+    background: transparent !important;
 }
 
 /* Share Buttons */
