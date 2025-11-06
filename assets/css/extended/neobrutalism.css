@@ -420,6 +420,13 @@ footer {
 }
 
 /* Post Navigation */
+nav.paginav {
+    background: var(--neo-header-bg);
+    border-bottom: var(--neo-border-width) solid var(--neo-border);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+}
+
 .post-nav-links {
     border-top: var(--neo-border-width) solid var(--neo-border);
     border-bottom: var(--neo-border-width) solid var(--neo-border);
@@ -446,6 +453,13 @@ footer {
 /* Pagination Navigation (prev/next posts) */
 .paginav a:hover {
     background: transparent !important;
+}
+
+ul.share-buttons {
+    background: var(--neo-header-bg);
+    border-bottom: var(--neo-border-width) solid var(--neo-border);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
 }
 
 /* Share Buttons */
