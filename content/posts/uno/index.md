@@ -7,7 +7,7 @@ toc: true
 
 I wrestled current[^1] LLMs into behaving like my childhood AI hero: here's what worked, what didn't, and why.
 
-[Uno](https://disney.fandom.com/wiki/Uno) is my favorite character from my favorite childhood comic
+[Uno](https://disney.fandom.com/wiki/Uno) is my favorite character from my favorite Italian childhood comic
 [PKNA](https://en.wikipedia.org/wiki/PKNA). He's the friendly and sarcastic AI helping Donald Duck in adventures
 spanning 56 issues in the mid '90s. My first attempt at re-creating him was a complicated Excel spreadsheet in my early
 teens with lots of nested `IF` functions. This is my second attempt.
