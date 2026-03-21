@@ -19,10 +19,6 @@ be not as polished, but if you spend time reading till the end, I guarantee I ha
 
 ## The Field Moves Fast
 
-You can judge by the frequency at which I publish and the tone I use (it reads as a sort of obituary) that I usually
-write things up when I consider them done. But given the craziness of the last couple of years in the AI space, I feel
-that if I wait to be "done", 3/4 of the post will be completely obsolete by the time it goes live.
-
 A year ago, I set out to create an AI assistant that behaves like Uno. I split this goal since then into three different
 areas: personality shaping, personal assistant, and an RPG set in the fictional universe of the comic. This post is only
 about the first part, which I believe to be the most interesting and least explored, at the moment. Personal assistants
@@ -448,6 +444,8 @@ in between. This script tries to make observations and generalizations more stru
 *   Counting and sorting claims (this is done deterministically).
 *   Explicitly resolving contradictions at the end.
 *   Only including claims with enough evidence in the final generation step.
+
+![](generate.excalidraw.svg)
 
 A
 [Claim](https://github.com/mbrt/pkna-uno/blob/4d4cd7b39ac5ade2cdba8783d24fe1a124cd5fd7/build_claim_ledger_profile.py#L247)
