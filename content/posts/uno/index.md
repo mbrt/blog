@@ -14,6 +14,12 @@ teens with lots of nested `IF` functions. This is my second attempt.
 
 ![](uno-panel.jpg)
 
+I believe my approach is general enough to apply to any character (with enough source material), from any media (text,
+images, video), and is portable across LLMs with no re-training required.
+
+See the [experimental code](https://github.com/mbrt/pkna-uno), and resulting
+[dataset](https://github.com/mbrt/pkna-uno/blob/main/README.md#results).
+
 **NOTE:** None of this text was AI generated. It was a long and hard work of labor (done in my sparse free time). It may
 be not as polished, but if you spend time reading till the end, I guarantee I haven't fed you some random GPT slop.[^2]
 
