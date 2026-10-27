@@ -221,11 +221,12 @@ proxy that encrypts the body of messages dynamically before sending them to the
 existing RMQ clusters. The proxy behaves the same as a regular RMQ instance, as
 it speaks the same protocol, but only encrypts / decrypts messages on the fly,
 based on the tenant context (extracted from security context and passed along
-with each message by the client). It delegates all functionality to the actual
-RMQ instance, which at this point can store the data the way it wants (as it&rsquo;s
-already encrypted correctly). This required minimal changes to client-side
-libraries, didn&rsquo;t suffer from any of the problems discussed below and also
-improved connection counts toward the RMQ cluster.</p><p><img loading=lazy src=/posts/multi-tenant-cmek/img9.svg></p><p>To understand which tenants require encryption, and map them to their encryption
+with each <a href=https://www.rabbitmq.com/tutorials/amqp-concepts#messages>message</a>
+by the client). It delegates all functionality to the actual RMQ instance, which
+at this point can store the data the way it wants (as it&rsquo;s already encrypted
+correctly). This required minimal changes to client-side libraries, didn&rsquo;t
+suffer from any of the problems discussed below and also improved connection
+counts toward the RMQ cluster.</p><p><img loading=lazy src=/posts/multi-tenant-cmek/img9.svg></p><p>To understand which tenants require encryption, and map them to their encryption
 key, the proxy uses the <a href=/posts/multi-tenant-cmek/#orchestration-automation>Orchestration service</a>
 (described later), and <a href=/posts/multi-tenant-cmek/#key-vault>Celonis Key Vault</a> for the data encryption.
 To reduce latency, data keys are generated every few minutes (still respecting
