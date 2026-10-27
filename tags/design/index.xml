@@ -6,8 +6,22 @@
     <description>Recent content in Design on mbrt blog</description>
     <generator>Hugo -- 0.150.1</generator>
     <language>en</language>
-    <lastBuildDate>Sat, 16 Nov 2024 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Mon, 26 Oct 2026 00:00:00 +0000</lastBuildDate>
     <atom:link href="https://blog.mbrt.dev/tags/design/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Multi-tenant Customer Managed Encryption Keys</title>
+      <link>https://blog.mbrt.dev/posts/multi-tenant-cmek/</link>
+      <pubDate>Mon, 26 Oct 2026 00:00:00 +0000</pubDate>
+      <guid>https://blog.mbrt.dev/posts/multi-tenant-cmek/</guid>
+      <description>&lt;p&gt;&lt;em&gt;This is a repost from my company&amp;rsquo;s &lt;a href=&#34;https://careers.celonis.com/blog/multi-tenant-customer-managed-encryption-keys&#34;&gt;engineering
+blog&lt;/a&gt;
+&lt;sup id=&#34;fnref:1&#34;&gt;&lt;a href=&#34;#fn:1&#34; class=&#34;footnote-ref&#34; role=&#34;doc-noteref&#34;&gt;1&lt;/a&gt;&lt;/sup&gt;. Same content, different layout. Opinions and voice my own.&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Tell me you work with enterprise customers without telling me you work with
+enterprise customers: Customer-Managed Encryption Keys (&lt;strong&gt;CMEK&lt;/strong&gt;). If you know
+this acronym, welcome! This is a compliance topic, and I know that these are
+second in boredom only to German tax law, but I found some interesting lessons
+that apply more generally, so here we are.&lt;/p&gt;</description>
+    </item>
     <item>
       <title>Glassdb: transactional object storage</title>
       <link>https://blog.mbrt.dev/posts/transactional-object-storage/</link>

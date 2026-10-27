@@ -6,8 +6,29 @@
     <description>Recent content in Tags on mbrt blog</description>
     <generator>Hugo -- 0.150.1</generator>
     <language>en</language>
-    <lastBuildDate>Sat, 28 Feb 2026 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Mon, 26 Oct 2026 00:00:00 +0000</lastBuildDate>
     <atom:link href="https://blog.mbrt.dev/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Cloud</title>
+      <link>https://blog.mbrt.dev/tags/cloud/</link>
+      <pubDate>Mon, 26 Oct 2026 00:00:00 +0000</pubDate>
+      <guid>https://blog.mbrt.dev/tags/cloud/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Db</title>
+      <link>https://blog.mbrt.dev/tags/db/</link>
+      <pubDate>Mon, 26 Oct 2026 00:00:00 +0000</pubDate>
+      <guid>https://blog.mbrt.dev/tags/db/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Design</title>
+      <link>https://blog.mbrt.dev/tags/design/</link>
+      <pubDate>Mon, 26 Oct 2026 00:00:00 +0000</pubDate>
+      <guid>https://blog.mbrt.dev/tags/design/</guid>
+      <description></description>
+    </item>
     <item>
       <title>Ai</title>
       <link>https://blog.mbrt.dev/tags/ai/</link>
@@ -16,31 +37,10 @@
       <description></description>
     </item>
     <item>
-      <title>Cloud</title>
-      <link>https://blog.mbrt.dev/tags/cloud/</link>
-      <pubDate>Fri, 31 Oct 2025 00:00:00 +0000</pubDate>
-      <guid>https://blog.mbrt.dev/tags/cloud/</guid>
-      <description></description>
-    </item>
-    <item>
       <title>Data-Science</title>
       <link>https://blog.mbrt.dev/tags/data-science/</link>
       <pubDate>Fri, 31 Oct 2025 00:00:00 +0000</pubDate>
       <guid>https://blog.mbrt.dev/tags/data-science/</guid>
-      <description></description>
-    </item>
-    <item>
-      <title>Db</title>
-      <link>https://blog.mbrt.dev/tags/db/</link>
-      <pubDate>Sat, 16 Nov 2024 00:00:00 +0000</pubDate>
-      <guid>https://blog.mbrt.dev/tags/db/</guid>
-      <description></description>
-    </item>
-    <item>
-      <title>Design</title>
-      <link>https://blog.mbrt.dev/tags/design/</link>
-      <pubDate>Sat, 16 Nov 2024 00:00:00 +0000</pubDate>
-      <guid>https://blog.mbrt.dev/tags/design/</guid>
       <description></description>
     </item>
     <item>
