@@ -7,8 +7,8 @@ toc: true
 ---
 
 _This is a repost from my company's [engineering
-blog](https://careers.celonis.com/blog/multi-tenant-customer-managed-encryption-keys)
-[^1]. Same content, different layout. Opinions and voice my own._
+blog](https://careers.celonis.com/blog/multi-tenant-customer-managed-encryption-keys).
+Same content, different layout. Opinions and voice my own._
 
 Tell me you work with enterprise customers without telling me you work with
 enterprise customers: Customer-Managed Encryption Keys (**CMEK**). If you know
@@ -260,10 +260,10 @@ particular tenant is separated and invisible to other tenants?
 
 Celonis being natively multi-tenant, we didn't have to invent anything special
 to identify tenants. We tapped into existing functionality of the ingress
-gateway, which assigns a tenant ID to all authenticated requests by setting an
-HTTP Header and a matching [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token).
-All the RPC libraries we use propagate this information automatically when
-services call each other.
+gateway, which assigns a tenant ID to all authenticated requests through a
+signed [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token). All the RPC
+libraries we use propagate this information automatically when services call
+each other.
 
 ![](img8.svg)
 
@@ -344,11 +344,10 @@ To solve that, we applied [Pattern A](#patterns) cleanly: a transparent AMQP
 proxy that encrypts the body of messages dynamically before sending them to the
 existing RMQ clusters. The proxy behaves the same as a regular RMQ instance, as
 it speaks the same protocol, but only encrypts / decrypts messages on the fly,
-based on the tenant context (extracted from security context and passed as a
-[message extended
-header](https://www.rabbitmq.com/tutorials/amqp-concepts#messages) by the
-client). It delegates all functionality to the actual RMQ instance, which at
-this point can store the data the way it wants (as it's already encrypted
+based on the tenant context (extracted from security context and passed along
+with each [message](https://www.rabbitmq.com/tutorials/amqp-concepts#messages)
+by the client). It delegates all functionality to the actual RMQ instance, which
+at this point can store the data the way it wants (as it's already encrypted
 correctly). This required minimal changes to client-side libraries, didn't
 suffer from any of the problems discussed below and also improved connection
 counts toward the RMQ cluster.
@@ -506,9 +505,9 @@ What we ended up using was [Pattern B](#patterns). It's no secret that database
 encryption is best managed by databases themselves. We split the database
 clusters into several partitions (one per CMEK customer). Each instance was then
 encrypted at rest with the right customer key at the cloud provider level. To
-route among those instances, we introduced a proxy (a forked version of
-[pgcat](https://github.com/postgresml/pgcat)) that speaks the Postgres wire
-protocol, provides connection pooling and routes according to tenant context.
+route among those instances, we introduced a proxy (an internal version of an
+open-source pooler) that speaks the Postgres wire protocol, provides connection
+pooling and routes according to tenant context.
 
 ![](img11.svg)
 
@@ -520,12 +519,11 @@ tenants.
 ![](img12.svg)
 
 To make routing work transparently, we extended the core libraries so that when
-a connection is taken from the pool, the library sends a
-`/*ctx:<tenant_id>*/SELECT 1` statement to `pgcat`. The proxy answers it locally
-and routes all following queries on that connection to the correct tenant's DB
-instance. This needed no custom protocol and no full SQL parsing. The proxy only
-needs to recognize these hints and keep the tenant-to-partition mapping in
-memory.
+a connection is taken from the pool, the library tells the proxy which tenant
+the connection is serving. The proxy then routes all following queries on that
+connection to the correct tenant's DB instance. This needed no custom protocol
+and no full SQL parsing. The proxy only needs to keep the tenant-to-partition
+mapping in memory.
 
 This trick solved the vast majority of routing needs we had at the time, but not
 all. We discovered a long tail of cases where multi-tenant queries were
@@ -535,9 +533,8 @@ all partitions, and rewriting those queries, but we would then also have lost
 cross-partition atomicity. Automatic retries of failed queries are not safe in
 general (i.e. idempotency is not always guaranteed), so instead of spending a
 long time rewriting while taking significant risks, we decided to add a reserved
-`ctx:x-tenant` context that routed to all partitions through
-[ShardingSphere](https://github.com/apache/shardingsphere) (managed
-automatically through annotations).
+cross-tenant context (managed automatically through annotations) that routed to
+all partitions through a sharding middleware based on an open-source project.
 
 Besides routing, multiple instances also brought the challenge of schema
 management. Whereas before, services could choose to use whatever mechanism they
@@ -756,6 +753,3 @@ through, while steering away from off-the-shelf solutions, which are the common
 sense of our profession. There would be a lot more to say on this topic, but I
 hope this already brings some value to you, fellow engineer, navigating complex
 problems whose solution comes into sight only along the way.
-
-
-[^1]:  Archived [link](https://web.archive.org/web/20261027084241/https://careers.celonis.com/blog/multi-tenant-customer-managed-encryption-keys.plain.html)
