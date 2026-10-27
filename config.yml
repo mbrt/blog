@@ -62,12 +62,11 @@ params:
     paragraph: "Nothing to see here, buddy."
 
   homeInfoParams:
-    Title: "mbrt blog"
+    Title: mbrt
     Content: >
       I'm a Software Engineer. My main interests are related to Linux, Kubernetes,
-      data science, C++, Rust, Go, security and reverse engineering. In Real Life
-      I love spending time with my family, reading, listening to music and playing
-      sports.
+      data storage, security and reverse engineering. When I touch grass, I love spending
+      time with my family, reading, and playing sports. Opinions and writing, my own.
 
   socialIcons:
     - name: github
