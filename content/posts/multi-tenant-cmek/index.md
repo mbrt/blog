@@ -7,8 +7,8 @@ toc: true
 ---
 
 _This is a repost from my company's [engineering
-blog](https://careers.celonis.com/blog/multi-tenant-customer-managed-encryption-keys).
-Same content, different layout. Opinions and voice my own._
+blog](https://careers.celonis.com/blog/multi-tenant-customer-managed-encryption-keys)
+[^1]. Same content, different layout. Opinions and voice my own._
 
 Tell me you work with enterprise customers without telling me you work with
 enterprise customers: Customer-Managed Encryption Keys (**CMEK**). If you know
@@ -753,3 +753,5 @@ through, while steering away from off-the-shelf solutions, which are the common
 sense of our profession. There would be a lot more to say on this topic, but I
 hope this already brings some value to you, fellow engineer, navigating complex
 problems whose solution comes into sight only along the way.
+
+[^1]:  Archived [link](https://web.archive.org/web/20261028100255/https://careers.celonis.com/blog/multi-tenant-customer-managed-encryption-keys.plain.html)
