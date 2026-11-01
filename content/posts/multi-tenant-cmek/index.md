@@ -754,4 +754,4 @@ sense of our profession. There would be a lot more to say on this topic, but I
 hope this already brings some value to you, fellow engineer, navigating complex
 problems whose solution comes into sight only along the way.
 
-[^1]:  Archived [link](https://web.archive.org/web/20261028100255/https://careers.celonis.com/blog/multi-tenant-customer-managed-encryption-keys.plain.html)
+[^1]:  Archived [link](https://web.archive.org/web/20261101130243/https://careers.celonis.com/blog/multi-tenant-customer-managed-encryption-keys.plain.html)
